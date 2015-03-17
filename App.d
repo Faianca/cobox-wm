@@ -2,7 +2,13 @@
 
 import std.stdio;
 import std.datetime;
+import std.exception;
 
+import libX11.deimos.X11.X;
+import libX11.deimos.X11.Xlib;
+import libX11.deimos.X11.keysymdef;
+import libX11.deimos.X11.Xutil;
+import libX11.deimos.X11.Xatom;
 
 /***
  * 

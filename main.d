@@ -1,12 +1,28 @@
-﻿module main;
-import cbox;
+﻿module main;	
+import std.c.locale;
+import std.c.string;
+import std.c.stdlib;
 
+
+import std.stdio;
+import std.string;
+import std.algorithm;
+import std.conv;
+import std.process;
+import std.traits;
 immutable string VERSION = "0.1";
+import core.memory;
+alias DGC = core.memory.GC;
 
-void main(string[] args)
+import core.sys.posix.signal;
+import core.sys.posix.sys.wait;
+import core.sys.posix.unistd;
+
+
+int main(string[] args)
 {
-	auto app = new App();
-	app.init(); 
+	//auto app = new App();
+	//app.init(); 
 	
 	if(args.length == 2 && args[1] == "-v") {
 		stderr.writeln("cbox-wm-"~VERSION~"\n"~
@@ -31,7 +47,7 @@ void main(string[] args)
 		return -1;
 	}
 
-	app.checkotherwm();
+	//app.checkotherwm();
 	setup();
 	scan();
 	run();
