@@ -18,7 +18,7 @@ void main()
 		stderr.writeln("usage: cbox-wm [-v]");
 		return -1;
 	}
-	
+
 	if(!setlocale(LC_CTYPE, "".toStringz) || !XSupportsLocale()) {
 		stderr.writeln("warning: no locale support");
 		return -1;
