@@ -6,8 +6,8 @@ immutable string VERSION = "0.1";
 void main(string[] args)
 {
 	auto app = new App();
-	app.init();
-
+	app.init(); 
+	
 	if(args.length == 2 && args[1] == "-v") {
 		stderr.writeln("cbox-wm-"~VERSION~"\n"~
 			"The Cteam Window Manager.\n\t"~
