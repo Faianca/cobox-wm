@@ -1,11 +1,12 @@
 ﻿module main;
 import cbox;
 
-void main()
-{
-	const VERSION = 0.1;
+immutable string VERSION = "0.1";
 
-	auto base = new App();
+void main(string[] args)
+{
+	auto app = new App();
+	app.init();
 
 	if(args.length == 2 && args[1] == "-v") {
 		stderr.writeln("cbox-wm-"~VERSION~"\n"~
@@ -23,12 +24,14 @@ void main()
 		stderr.writeln("warning: no locale support");
 		return -1;
 	}
+
 	dpy = XOpenDisplay(null);
 	if(dpy is null) {
 		stderr.writeln("cbox: cannot open display");
 		return -1;
 	}
-	checkotherwm();
+
+	app.checkotherwm();
 	setup();
 	scan();
 	run();
@@ -37,3 +40,4 @@ void main()
 	lout("cbox-"~VERSION~" end");
 	return 0;
 }
+

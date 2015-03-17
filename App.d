@@ -3,6 +3,7 @@
 import std.stdio;
 import std.datetime;
 
+
 /***
  * 
  */
@@ -63,6 +64,26 @@ class App
 		
 		pointer_x = 0;
 		pointer_y = 0;
+	}
+
+	/** 
+	 * Startup Error handler to check if another window manager
+	 * is already running. 
+	 **/
+	extern(C) int xerrorstart(Display *dpy, XErrorEvent *ee) nothrow 
+	{
+		die("cbox: another window manager is already running");
+		return 1;
+	}
+
+	void checkotherwm() 
+	{
+		xerrorxlib = XSetErrorHandler(&xerrorstart);
+		/* this causes an error if some other window manager is running */
+		XSelectInput(dpy, DefaultRootWindow(dpy), SubstructureRedirectMask);
+		XSync(dpy, false);
+		XSetErrorHandler(&xerror);
+		XSync(dpy, false);
 	}
 
 	void addFdHandler()
