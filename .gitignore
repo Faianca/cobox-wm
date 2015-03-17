@@ -3,3 +3,10 @@
 *.int
 *.lk
 *.zip
+*.o
+obj/
+bin/
+*.dproj
+*.sln
+*.userprefs
+*.*~
