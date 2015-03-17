@@ -60,7 +60,7 @@ class App
 	this()
 	{
 		writeln("im alive");
-
+ 
 		
 		pointer_x = 0;
 		pointer_y = 0;
