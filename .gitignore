@@ -11,3 +11,7 @@ bin/
 *.userprefs
 *.*~
 main
+*~
+dub.json
+.dub/
+dub.selections.json
