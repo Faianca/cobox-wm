@@ -1,0 +1,17 @@
+*.dmb
+*.rsc
+*.int
+*.lk
+*.zip
+*.o
+obj/
+bin/
+*.dproj
+*.sln
+*.userprefs
+*.*~
+main
+*~
+dub.json
+.dub/
+dub.selections.json

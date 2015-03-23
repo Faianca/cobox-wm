@@ -26,6 +26,8 @@ import deimos.X11.keysymdef;
 import deimos.X11.Xutil;
 import deimos.X11.Xatom;
 
+Display *dpy; 
+
 int main(string[] args)
 {
 	if(args.length == 2 && args[1] == "-v") {
@@ -36,20 +38,15 @@ int main(string[] args)
 			"© 2014-2015 cbox engineers, see LICENSE for details"
 		);
 		return -1;
-
 	} 	
 
-	if(!setlocale(LC_CTYPE, "".toStringz) || !XSupportsLocale()) {
-		stderr.writeln("warning: no locale support");
+	writeln("tau");
+	dpy = XOpenDisplay(null);
+
+	if(dpy is null) {
+		stderr.writeln("cbox: cannot open display");
 		return -1;
 	}
-	writeln("tau");
-//	dpy = XOpenDisplay(null);
-//
-//	if(dpy is null) {
-//		stderr.writeln("cbox: cannot open display");
-//		return -1;
-//	}
 //
 //	auto app = new App(dpy);
 //
@@ -57,8 +54,8 @@ int main(string[] args)
 //	app.run();
 //	app.shutdown();
 //
-//	XCloseDisplay(dpy);
-	//lout("cbox-"~VERSION~" end");
+	XCloseDisplay(dpy);
+    writeln("cbox-"~VERSION~" end");
 	return 0;
 }
 
