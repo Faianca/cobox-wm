@@ -2,7 +2,7 @@
 	"name": "cobox-wm",
 	"description": "A minimal D application.",
 	"copyright": "Copyright © 2015, root",
-	"authors": ["root"],
+	"authors": ["faianca"],
 	"dependencies":{
 		"libx11":">=0.0.1"
 	}

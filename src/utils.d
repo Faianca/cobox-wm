@@ -1,9 +1,22 @@
-﻿module utils;
+module utils;
+
+import legacy;
 import std.stdio;
+import core.sys.posix.signal;
 
-immutable string debugLogFile = "ddwm.log";
+import deimos.X11.X;
+import deimos.X11.Xlib;
+import deimos.X11.keysymdef;
+import deimos.X11.Xutil;
+import deimos.X11.Xatom;
 
-private File _logfile;
+void sigchld(int unused) nothrow
+{
+	if(signal(SIGCHLD, &sigchldImpl) == SIG_ERR) {
+		die("Can't install SIGCHLD handler");
+	}
+	sigchldImpl(unused);
+}
 
 auto die(F, A...)(lazy F fmt, lazy A args) nothrow
 {
@@ -14,38 +27,4 @@ auto die(F, A...)(lazy F fmt, lazy A args) nothrow
 	exit(EXIT_FAILURE);
 }
 
-auto lout(string file = __FILE__,
-	size_t line = __LINE__,
-	F,
-	A...)(lazy F fmt,
-	lazy A args) nothrow @trusted
-{
-	import std.datetime : Clock, DateTime;
-	import std.process : thisProcessID;
-	import std.string;
-	import std.file;
-	string txt, fmtTxt;
-	try {
-		try {
-			fmtTxt = format(fmt, args);
-			txt = format("[%s] [%s] [%s(%s)] %s", thisProcessID, cast(DateTime)(Clock.currTime), file, line, fmtTxt);
-		} catch {
-			die("Failed to format text '%s','%s'", fmt, args);
-		}
-		//     debug {
-		try {
-			_logfile = File(debugLogFile, "a");
-			_logfile.writefln(txt);
-			_logfile.close;
-		} catch        { die("failed to log to file");}
-		//}
-		stderr.writeln(txt);
-	} catch {
-		die("Failed to log '%s' to stdout.", fmt, args);
-	}
-}
 
-MaxType!(T1, T2, T3) clamp(T1, T2, T3)(T1 val, T2 lower, T3 upper)
-{
-	return max(lower, min(upper,val));
-}
