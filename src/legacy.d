@@ -14,6 +14,10 @@ import deimos.X11.Xatom;
 
 import utils;
 
+extern(C) int xerrordummy(Display *dpy, XErrorEvent *ee) nothrow {
+    return 0;
+}
+
 // From core.sys.posix.sys.wait because waitpid is not nothrow @nogc @system
 extern(C) pid_t waitpid(pid_t, int*, int) nothrow @nogc @system;
 
