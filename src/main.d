@@ -10,8 +10,7 @@ int main(string[] args)
 		stderr.writeln(
 			"cbox-wm-"~VERSION~"\n"~
 			"The Cteam Window Manager.\n\t"~
-			"© 2015 Cbox, see LICENSE for details\n\t"~
-			"© 2014-2015 cbox engineers, see LICENSE for details"
+			"© 2015 Cbox, see LICENSE for details\n\t"
 			);
 		return -1;
 	}
