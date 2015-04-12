@@ -28,7 +28,7 @@ import types;
 import kernel;
 import legacy;
 import utils;
-
+import config;
 
 void updateclientlist() {
     
@@ -295,14 +295,18 @@ void resizemouse(const Arg *arg) {
     if(!c) {
         return;
     }
+
     if(c.isfullscreen) /* no support resizing fullscreen windows by mouse */
         return;
+
     restack(selmon);
     ocx = c.x;
     ocy = c.y;
+
     if(XGrabPointer(dpy, rootWin, false, MOUSEMASK, GrabModeAsync, GrabModeAsync,
                     None, cursor[CurResize].cursor, CurrentTime) != GrabSuccess)
         return;
+    
     XWarpPointer(dpy, None, c.win, 0, 0, 0, 0, c.w + c.bw - 1, c.h + c.bw - 1);
     do {
         XMaskEvent(dpy, MOUSEMASK|ExposureMask|SubstructureRedirectMask, &ev);
@@ -460,7 +464,7 @@ void mappingnotify(XEvent *e) {
 
     XRefreshKeyboardMapping(ev);
     if(ev.request == MappingKeyboard)
-        grabkeys();
+        keyboardEventHandler.grabkeys();
 }
 
 void maprequest(XEvent *e) {
@@ -1283,23 +1287,6 @@ void focusstack(const Arg *arg) {
     if(c) {
         focus(c);
         restack(selmon);
-    }
-}
-
-struct Key {
-	uint mod;
-	KeySym keysym;
-    void function(const Arg* a) func;
-    const Arg arg;
-
-    this(uint mod, KeySym keysym, void function(const Arg* a) func) {
-        this(mod, keysym, func, null);
-    }
-    this(T)(uint mod, KeySym keysym, void function(const Arg* a) func, T arg) {
-        this.mod = mod;
-        this.keysym = keysym;
-        this.func = func;
-        this.arg = makeArg(arg);
     }
 }
 
