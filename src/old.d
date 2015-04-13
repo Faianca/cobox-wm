@@ -522,10 +522,12 @@ void propertynotify(XEvent *e) {
         }
     }
 }
+
 void quit(const Arg *arg) {
     
     running = false;
 }
+
 void unmapnotify(XEvent *e) {
     
     Client *c;

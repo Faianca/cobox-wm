@@ -117,7 +117,7 @@ class MouseEvents
 	    XFreeModifiermap(modmap);
 	}
 
-	void buttonpress(XEvent *ev) 
+	void buttonpress(XEvent *e) 
 	{
 	    uint i, x, click;
 	    auto arg = Arg(0);
@@ -128,12 +128,13 @@ class MouseEvents
 	    click = ClkRootWin;
 
 	    /* focus monitor if necessary */
-	    m = wintomon(ev.window);
-	    if( (m !is null) && (m != selmon) ) {
-	        unfocus(selmon.sel, true);
-	        selmon = m;
-	        focus(null);
-	    }
+	    m = cast(Monitor*)wintomon(ev.window);
+
+	    //if( (m !is null) && (m != selmon) ) {
+	       //unfocus(selmon.sel, true);
+	       //selmon = m;
+	       //focus(null);
+	    //}
 
 	    if(ev.window == selmon.barwin) {
 	        i = x = 0;
