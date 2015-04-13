@@ -1135,29 +1135,7 @@ void configure(Client *c) {
     XSendEvent(dpy, c.win, false, StructureNotifyMask, cast(XEvent *)&ce);
 }
 
-void grabbuttons(Client *c, bool focused) {
-    
-    updatenumlockmask();
-    uint i, j;
-    uint[] modifiers = [ 0, LockMask, numlockmask, numlockmask|LockMask ];
-    XUngrabButton(dpy, AnyButton, AnyModifier, c.win);
-    if(focused) {
-        foreach(ref const but; buttons) {
-            if(but.click == ClkClientWin) {
-                foreach(ref const mod; modifiers) {
-                    XGrabButton(dpy, but.button,
-                                but.mask | mod,
-                                c.win, false, BUTTONMASK,
-                                GrabModeAsync, GrabModeSync,
-                                cast(ulong)None, cast(ulong)None);
-                }
-            }
-        }
-    } else {
-        XGrabButton(dpy, AnyButton, AnyModifier, c.win, false,
-                    BUTTONMASK, GrabModeAsync, GrabModeSync, None, None);
-    }
-}
+
 
 
 void updatesizehints(Client *c) {
@@ -1224,7 +1202,7 @@ void focus(Client *c) {
             clearurgent(c);
         detachstack(c);
         attachstack(c);
-        grabbuttons(c, true);
+        mouseEventHandler.grabbuttons(c, true);
         XSetWindowBorder(dpy, c.win, scheme[SchemeSel].border.rgb);
         setfocus(c);
     } else {
@@ -1290,30 +1268,6 @@ void focusstack(const Arg *arg) {
     }
 }
 
-struct Button {
-	uint click;
-	uint mask;
-	uint button;
-
-    void function(const Arg* a) func;
-    const Arg arg;
-
-    this(uint click, uint mask, uint button, void function(const Arg* a) func) {
-        this(click, mask, button, func, 0);
-    }
-    this(T)(uint click, uint mask, uint button, void function(const Arg* a) func, T arg) {
-        this.click = click;
-        this.mask = mask;
-        this.button = button;
-        this.func = func;
-        this.arg = makeArg(arg);
-    }
-};
-
-/* button definitions */
-/* click can be ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
-static Button[] buttons;
-
 Client* wintoclient(Window w) {
     
     foreach(m; mons.range) {
@@ -1329,7 +1283,7 @@ void unfocus(Client *c, bool setfocus) {
     
     if(!c)
         return;
-    grabbuttons(c, false);
+    mouseEventHandler.grabbuttons(c, false);
     XSetWindowBorder(dpy, c.win, scheme[SchemeNorm].border.rgb);
     if(setfocus) {
         XSetInputFocus(dpy, rootWin, RevertToPointerRoot, CurrentTime);
@@ -1337,8 +1291,8 @@ void unfocus(Client *c, bool setfocus) {
     }
 }
 
-Monitor* wintomon(Window w) {
-    
+Monitor* wintomon(Window w) 
+{
     int x, y;
 
     if(w == rootWin && getrootptr(&x, &y)) {
@@ -1443,8 +1397,6 @@ void showhide(Client *c) {
         XMoveWindow(dpy, c.win, WIDTH(c) * -2, c.y);
     }
 }
-
-immutable string[] tags = [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ];
 
 /* layout(s) */
 static immutable float mfact      = 0.55; /* factor of master area size [0.05..0.95] */

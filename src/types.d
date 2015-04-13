@@ -82,7 +82,8 @@ struct Client
     }
 }
 
-struct Monitor {
+struct Monitor 
+{
 	string ltsymbol;
 	float mfact;
 	int nmaster;

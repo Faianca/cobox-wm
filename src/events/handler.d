@@ -1,6 +1,7 @@
 module events.handler;
 
 import events.keyboard;
+import events.mouse;
 import kernel;
 import old;
 import config;
@@ -15,25 +16,14 @@ import std.stdio;
 
 class EventHandler 
 {
+	KeyboardEvents keyboard;
+	MouseEvents mouse;
 
-	this()
+	this(KeyboardEvents keyboardEvents, MouseEvents mouseEvents)
 	{
-	    buttons = [
-	        /* click                event mask      button          function        argument */
-	        Button( ClkLtSymbol,          0,              Button1,        &setlayout ),
-	        Button( ClkLtSymbol,          0,              Button3,        &setlayout,      &layouts[2] ),
-	        Button( ClkWinTitle,          0,              Button2,        &zoom ),
-	        Button( ClkStatusText,        0,              Button2,        &spawn,          termcmd ), // &termcmd
-	        Button( ClkClientWin,         MODKEY,         Button1,        &movemouse ),
-	        Button( ClkClientWin,         MODKEY,         Button2,        &togglefloating ),
-	        Button( ClkClientWin,         MODKEY,         Button3,        &resizemouse ),
-	        Button( ClkTagBar,            0,              Button1,        &view ),
-	        Button( ClkTagBar,            0,              Button3,        &toggleview ),
-	        Button( ClkTagBar,            MODKEY,         Button1,        &tag ),
-	        Button( ClkTagBar,            MODKEY,         Button3,        &toggletag )
-	    ];
+		keyboard = keyboardEvents;
+		mouse = mouseEvents;
 
-	    handler[ButtonPress] = &buttonpress;
 	    handler[ClientMessage] = &clientmessage;
 	    handler[ConfigureRequest] = &configurerequest;
 	    handler[ConfigureNotify] = &configurenotify;
@@ -41,7 +31,7 @@ class EventHandler
 	    handler[EnterNotify] = &enternotify;
 	    handler[Expose] = &expose;
 	    handler[FocusIn] = &focusin;
-	    handler[KeyPress] = &keypress;
+	  
 	    handler[MappingNotify] = &mappingnotify;
 	    handler[MapRequest] = &maprequest;
 	    handler[MotionNotify] = &motionnotify;
@@ -53,6 +43,9 @@ class EventHandler
 
 	void listen(XEvent* ev)
 	{
+		this.keyboard.listen(ev);
+		this.mouse.listen(ev);
+
 		if(handler[ev.type]) {
             handler[ev.type](ev); /* call handler */
         }

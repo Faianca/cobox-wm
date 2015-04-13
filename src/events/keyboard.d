@@ -99,6 +99,33 @@ class KeyboardEvents
 	    ];
     }
 
+    void listen(XEvent *e)
+    {
+    	switch (e.type) {
+    		case KeyPress:
+				this.keypress(e);
+    			break;
+    		default: { }
+    	}
+    }
+
+    void keypress(XEvent *e) 
+    {
+	    uint i;
+	    KeySym keysym;
+	    XKeyEvent *ev;
+
+	    ev = &e.xkey;
+	    keysym = XKeycodeToKeysym(dpy, cast(KeyCode)ev.keycode, 0);
+	    foreach(ref const key; keys) {
+	        if(keysym == key.keysym
+	                && CLEANMASK(key.mod) == CLEANMASK(ev.state)
+	                && key.func) {
+	            key.func( &(key.arg) );
+	        }
+	    }
+	}
+
     void grabkeys() 
     {
     	updatenumlockmask();

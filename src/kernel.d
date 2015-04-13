@@ -29,6 +29,7 @@ import old;
 import config;
 import events.handler;
 import events.keyboard;
+import events.mouse;
 
 static uint numlockmask = 0;
 
@@ -37,25 +38,10 @@ static Fnt *fnt;
 static Cur*[CurLast] cursor;
 static ClrScheme[SchemeLast] scheme;
 
-
 static Key[] keys;
-
-void keypress(XEvent *e) {
-    
-    uint i;
-    KeySym keysym;
-    XKeyEvent *ev;
-
-    ev = &e.xkey;
-    keysym = XKeycodeToKeysym(dpy, cast(KeyCode)ev.keycode, 0);
-    foreach(ref const key; keys) {
-        if(keysym == key.keysym
-                && CLEANMASK(key.mod) == CLEANMASK(ev.state)
-                && key.func) {
-            key.func( &(key.arg) );
-        }
-    }
-}
+/* button definitions */
+/* click can be ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
+static Button[] buttons;
 
 immutable string broken = "broken";
 static immutable string VERSION = "0.1 Cobox";
@@ -215,54 +201,6 @@ void attachstack(Client *c) {
     c.snext = c.mon.stack;
     c.mon.stack = c;
 }
-
-void buttonpress(XEvent *e) {
-    
-    uint i, x, click;
-    auto arg = Arg(0);
-    Client *c;
-    Monitor *m;
-    XButtonPressedEvent *ev = &e.xbutton;
-
-    click = ClkRootWin;
-    /* focus monitor if necessary */
-    m = wintomon(ev.window);
-    if( (m !is null) && (m != selmon) ) {
-        unfocus(selmon.sel, true);
-        selmon = m;
-        focus(null);
-    }
-    if(ev.window == selmon.barwin) {
-        i = x = 0;
-        do {
-            x += TEXTW(tags[i]);
-        } while(ev.x >= x && ++i < LENGTH(tags));
-        if(i < LENGTH(tags)) {
-            click = ClkTagBar;
-            arg.ui = 1 << i;
-        } else if(ev.x < x + blw)
-            click = ClkLtSymbol;
-        else if(ev.x > selmon.ww - TEXTW(stext))
-            click = ClkStatusText;
-        else
-            click = ClkWinTitle;
-    } else {
-        c = wintoclient(ev.window);
-        if(c !is null) {
-            focus(c);
-            click = ClkClientWin;
-        }
-    }
-    foreach(ref const but; buttons) {
-        if(click == but.click &&
-                but.func !is null &&
-                but.button == ev.button &&
-                CLEANMASK(but.mask) == CLEANMASK(ev.state)) {
-            but.func(click == ClkTagBar && but.arg.i == 0 ? &arg : &but.arg);
-        }
-    }
-}
-
 
 void setup() {
     
@@ -446,7 +384,7 @@ void manage(Window w, XWindowAttributes *wa) {
     updatesizehints(c);
     updatewmhints(c);
     XSelectInput(dpy, w, EnterWindowMask|FocusChangeMask|PropertyChangeMask|StructureNotifyMask);
-    grabbuttons(c, false);
+    mouseEventHandler.grabbuttons(c, false);
     if(!c.isfloating)
         c.isfloating = c.oldstate = trans != None || c.isfixed;
     if(c.isfloating)
@@ -506,6 +444,7 @@ void run() {
 
 EventHandler eventManager;
 KeyboardEvents keyboardEventHandler;
+MouseEvents mouseEventHandler;
 
 int init()
 {
@@ -517,9 +456,11 @@ int init()
 	}
 
     keyboardEventHandler = new KeyboardEvents();
-    eventManager = new EventHandler();
+    mouseEventHandler = new MouseEvents();
+    eventManager = new EventHandler(keyboardEventHandler, mouseEventHandler);
     
     keys = keyboardEventHandler.getKeys();
+    buttons = mouseEventHandler.getButtons();
 
     checkotherwm();
     setup();    
