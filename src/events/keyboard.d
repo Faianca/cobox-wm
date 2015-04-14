@@ -99,6 +99,11 @@ class KeyboardEvents
 	    ];
     }
 
+    void addEvent()
+    {
+    	
+    }
+
     void listen(XEvent *e)
     {
     	switch (e.type) {

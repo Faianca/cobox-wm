@@ -58,16 +58,7 @@ static immutable Rule[] rules = [
 { "Gimp",     null,       null,       0,            true,        -1 },
 { "Firefox",  null,       null,       1 << 8,       false,       -1 },
                                 ];
-                                
-void checkotherwm() 
-{
-	xerrorxlib = XSetErrorHandler(&xerrorstart);
-	/* this causes an error if some other window manager is running */
-	XSelectInput(dpy, DefaultRootWindow(dpy), SubstructureRedirectMask);
-	XSync(dpy, false);
-	XSetErrorHandler(&xerror);
-	XSync(dpy, false);
-}
+
 
 void applyrules(Client *c) {
     
@@ -202,64 +193,6 @@ void attachstack(Client *c) {
     c.mon.stack = c;
 }
 
-void setup() {
-    
-    XSetWindowAttributes wa;
-
-    /* clean up any zombies immediately */
-    sigchld(0);
-
-    /* init screen */
-    screen = DefaultScreen(dpy);
-    rootWin = RootWindow(dpy, screen);
-    fnt = new Fnt(dpy, font);
-    sw = DisplayWidth(dpy, screen);
-    sh = DisplayHeight(dpy, screen);
-    bh = fnt.h + 2;
-    drw = new Drw(dpy, screen, rootWin, sw, sh);
-    drw.setfont(fnt);
-    updategeom();
-    /* init atoms */
-    wmatom[WMProtocols] = XInternAtom(dpy, cast(char*)("WM_PROTOCOLS".toStringz), false);
-    wmatom[WMDelete] = XInternAtom(dpy, cast(char*)("WM_DELETE_WINDOW".toStringz), false);
-    wmatom[WMState] = XInternAtom(dpy, cast(char*)("WM_STATE".toStringz), false);
-    wmatom[WMTakeFocus] = XInternAtom(dpy, cast(char*)("WM_TAKE_FOCUS".toStringz), false);
-    netatom[NetActiveWindow] = XInternAtom(dpy, cast(char*)("_NET_ACTIVE_WINDOW".toStringz), false);
-    netatom[NetSupported] = XInternAtom(dpy, cast(char*)("_NET_SUPPORTED".toStringz), false);
-    netatom[NetWMName] = XInternAtom(dpy, cast(char*)("_NET_WM_NAME".toStringz), false);
-    netatom[NetWMState] = XInternAtom(dpy, cast(char*)("_NET_WM_STATE".toStringz), false);
-    netatom[NetWMFullscreen] = XInternAtom(dpy, cast(char*)("_NET_WM_STATE_FULLSCREEN".toStringz), false);
-    netatom[NetWMWindowType] = XInternAtom(dpy, cast(char*)("_NET_WM_WINDOW_TYPE".toStringz), false);
-    netatom[NetWMWindowTypeDialog] = XInternAtom(dpy, cast(char*)("_NET_WM_WINDOW_TYPE_DIALOG".toStringz), false);
-    netatom[NetClientList] = XInternAtom(dpy, cast(char*)("_NET_CLIENT_LIST".toStringz), false);
-    /* init cursors */
-    cursor[CurNormal] = new Cur(drw.dpy, CursorFont.XC_left_ptr);
-    cursor[CurResize] = new Cur(drw.dpy, CursorFont.XC_sizing);
-    cursor[CurMove] = new Cur(drw.dpy, CursorFont.XC_fleur);
-    /* init appearance */
-    scheme[SchemeNorm].border = new Clr(drw, normbordercolor);
-    scheme[SchemeNorm].bg = new Clr(drw, normbgcolor);
-    scheme[SchemeNorm].fg = new Clr(drw, normfgcolor);
-    scheme[SchemeSel].border = new Clr(drw, selbordercolor);
-    scheme[SchemeSel].bg = new Clr(drw, selbgcolor);
-    scheme[SchemeSel].fg = new Clr(drw, selfgcolor);
-    /* init bars */
-    updatebars();
-    updatestatus();
-    /* EWMH support per view */
-    XChangeProperty(dpy, rootWin, netatom[NetSupported], XA_ATOM, 32,
-                    PropModeReplace, cast(ubyte*) netatom, NetLast);
-    XDeleteProperty(dpy, rootWin, netatom[NetClientList]);
-    /* select for events */
-    wa.cursor = cursor[CurNormal].cursor;
-    wa.event_mask = SubstructureRedirectMask|SubstructureNotifyMask|ButtonPressMask|PointerMotionMask
-                    |EnterWindowMask|LeaveWindowMask|StructureNotifyMask|PropertyChangeMask;
-    XChangeWindowAttributes(dpy, rootWin, CWEventMask|CWCursor, &wa);
-    XSelectInput(dpy, rootWin, wa.event_mask);
-    keyboardEventHandler.grabkeys();
-    focus(null);
-}
-
 
 void updatebars()
 {
@@ -334,7 +267,8 @@ void updatetitle(Client *c) {
     }
 }
 
-void manage(Window w, XWindowAttributes *wa) {
+void manage(Window w, XWindowAttributes *wa) 
+{
     
     Client *c, t = null;
     Window trans = None;
@@ -403,71 +337,155 @@ void manage(Window w, XWindowAttributes *wa) {
     focus(null);
 }
 
-void scan() {
-    
-    uint i, num;
-    Window d1, d2;
-    Window* wins = null;
-    XWindowAttributes wa;
 
-    if(XQueryTree(dpy, rootWin, &d1, &d2, &wins, &num)) {
-        for(i = 0; i < num; i++) {
-            if(!XGetWindowAttributes(dpy, wins[i], &wa)
-                    || wa.override_redirect || XGetTransientForHint(dpy, wins[i], &d1))
-                continue;
-            if(wa.map_state == IsViewable || getstate(wins[i]) == IconicState)
-                manage(wins[i], &wa);
-        }
-        for(i = 0; i < num; i++) { /* now the transients */
-            if(!XGetWindowAttributes(dpy, wins[i], &wa))
-                continue;
-            if(XGetTransientForHint(dpy, wins[i], &d1)
-                    && (wa.map_state == IsViewable || getstate(wins[i]) == IconicState))
-                manage(wins[i], &wa);
-        }
-        if(wins)
-            XFree(wins);
-    }
-}
-
-void run() {
-
-    extern(C) __gshared XEvent ev;
-
-    /* main event loop */
-    XSync(dpy, false);
-    while(running && !XNextEvent(dpy, &ev)) {
-        eventManager.listen(&ev);
-    }
-
-}
 
 EventHandler eventManager;
 KeyboardEvents keyboardEventHandler;
 MouseEvents mouseEventHandler;
 
-int init()
+
+class Kernel
 {
-	dpy = XOpenDisplay(null);
+    //static Display *dpy;
 
-	if(dpy is null) {
-		stderr.writeln("cbox: cannot open display");
-		return -1;
-	}
+    this(Display* dpy)
+    {
+        dpy = dpy;
+    }
 
-    keyboardEventHandler = new KeyboardEvents();
-    mouseEventHandler = new MouseEvents();
-    eventManager = new EventHandler(keyboardEventHandler, mouseEventHandler);
-    
-    keys = keyboardEventHandler.getKeys();
-    buttons = mouseEventHandler.getButtons();
+    void setup() 
+    {
+        XSetWindowAttributes wa;
 
-    checkotherwm();
-    setup();    
-    scan();
-    run();
-    cleanup();
-	XCloseDisplay(dpy);
+        /* clean up any zombies immediately */
+        sigchld(0);
 
-	return 0;
+        /* init screen */
+        screen = DefaultScreen(dpy);
+        rootWin = RootWindow(dpy, screen);
+        fnt = new Fnt(dpy, font);
+        sw = DisplayWidth(dpy, screen);
+        sh = DisplayHeight(dpy, screen);
+        bh = fnt.h + 2;
+        drw = new Drw(dpy, screen, rootWin, sw, sh);
+        drw.setfont(fnt);
+        updategeom();
+
+        /* init atoms */
+        wmatom[WMProtocols] = XInternAtom(dpy, cast(char*)("WM_PROTOCOLS".toStringz), false);
+        wmatom[WMDelete] = XInternAtom(dpy, cast(char*)("WM_DELETE_WINDOW".toStringz), false);
+        wmatom[WMState] = XInternAtom(dpy, cast(char*)("WM_STATE".toStringz), false);
+        wmatom[WMTakeFocus] = XInternAtom(dpy, cast(char*)("WM_TAKE_FOCUS".toStringz), false);
+        netatom[NetActiveWindow] = XInternAtom(dpy, cast(char*)("_NET_ACTIVE_WINDOW".toStringz), false);
+        netatom[NetSupported] = XInternAtom(dpy, cast(char*)("_NET_SUPPORTED".toStringz), false);
+        netatom[NetWMName] = XInternAtom(dpy, cast(char*)("_NET_WM_NAME".toStringz), false);
+        netatom[NetWMState] = XInternAtom(dpy, cast(char*)("_NET_WM_STATE".toStringz), false);
+        netatom[NetWMFullscreen] = XInternAtom(dpy, cast(char*)("_NET_WM_STATE_FULLSCREEN".toStringz), false);
+        netatom[NetWMWindowType] = XInternAtom(dpy, cast(char*)("_NET_WM_WINDOW_TYPE".toStringz), false);
+        netatom[NetWMWindowTypeDialog] = XInternAtom(dpy, cast(char*)("_NET_WM_WINDOW_TYPE_DIALOG".toStringz), false);
+        netatom[NetClientList] = XInternAtom(dpy, cast(char*)("_NET_CLIENT_LIST".toStringz), false);
+
+        /* init cursors */
+        cursor[CurNormal] = new Cur(drw.dpy, CursorFont.XC_left_ptr);
+        cursor[CurResize] = new Cur(drw.dpy, CursorFont.XC_sizing);
+        cursor[CurMove] = new Cur(drw.dpy, CursorFont.XC_fleur);
+
+        /* init appearance */
+        scheme[SchemeNorm].border = new Clr(drw, normbordercolor);
+        scheme[SchemeNorm].bg = new Clr(drw, normbgcolor);
+        scheme[SchemeNorm].fg = new Clr(drw, normfgcolor);
+        scheme[SchemeSel].border = new Clr(drw, selbordercolor);
+        scheme[SchemeSel].bg = new Clr(drw, selbgcolor);
+        scheme[SchemeSel].fg = new Clr(drw, selfgcolor);
+
+        /* init bars */
+        updatebars();
+        updatestatus();
+
+        /* EWMH support per view */
+        XChangeProperty(dpy, rootWin, netatom[NetSupported], XA_ATOM, 32,
+                        PropModeReplace, cast(ubyte*) netatom, NetLast);
+        XDeleteProperty(dpy, rootWin, netatom[NetClientList]);
+
+        /* select for events */
+        wa.cursor = cursor[CurNormal].cursor;
+        wa.event_mask = SubstructureRedirectMask|SubstructureNotifyMask|ButtonPressMask|PointerMotionMask
+                        |EnterWindowMask|LeaveWindowMask|StructureNotifyMask|PropertyChangeMask;
+        XChangeWindowAttributes(dpy, rootWin, CWEventMask|CWCursor, &wa);
+        XSelectInput(dpy, rootWin, wa.event_mask);
+        keyboardEventHandler.grabkeys();
+        focus(null);
+    }
+
+    void checkotherwm() 
+    {
+        xerrorxlib = XSetErrorHandler(&xerrorstart);
+        /* this causes an error if some other window manager is running */
+        XSelectInput(dpy, DefaultRootWindow(dpy), SubstructureRedirectMask);
+        XSync(dpy, false);
+        XSetErrorHandler(&xerror);
+        XSync(dpy, false);
+    }
+
+    void scan() 
+    {
+        uint i, num;
+        Window d1, d2;
+        Window* wins = null;
+        XWindowAttributes wa;
+
+        if(XQueryTree(dpy, rootWin, &d1, &d2, &wins, &num)) {
+            for(i = 0; i < num; i++) {
+                if(!XGetWindowAttributes(dpy, wins[i], &wa)
+                        || wa.override_redirect || XGetTransientForHint(dpy, wins[i], &d1))
+                    continue;
+                if(wa.map_state == IsViewable || getstate(wins[i]) == IconicState)
+                    manage(wins[i], &wa);
+            }
+            for(i = 0; i < num; i++) { /* now the transients */
+                if(!XGetWindowAttributes(dpy, wins[i], &wa))
+                    continue;
+                if(XGetTransientForHint(dpy, wins[i], &d1)
+                        && (wa.map_state == IsViewable || getstate(wins[i]) == IconicState))
+                    manage(wins[i], &wa);
+            }
+            if(wins)
+                XFree(wins);
+        }
+    }
+
+    void run() 
+    {
+        extern(C) __gshared XEvent ev;
+
+        /* main event loop */
+        XSync(dpy, false);
+        while(running && !XNextEvent(dpy, &ev)) {
+            eventManager.listen(&ev);
+        }
+    }
+
+    int boot()
+    {
+        keyboardEventHandler = new KeyboardEvents();
+        mouseEventHandler = new MouseEvents();
+        eventManager = new EventHandler(keyboardEventHandler, mouseEventHandler);
+        
+        keys = keyboardEventHandler.getKeys();
+        buttons = mouseEventHandler.getButtons();
+
+        this.checkotherwm();
+        this.setup();    
+        this.scan();
+        this.run();
+        this.close();
+
+        return 0;
+    }
+
+    void close()
+    {
+        cleanup();
+        XCloseDisplay(dpy);
+    }
 }
