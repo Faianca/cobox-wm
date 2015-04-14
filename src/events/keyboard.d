@@ -12,6 +12,7 @@ import deimos.X11.keysymdef;
 import deimos.X11.Xutil;
 import deimos.X11.Xatom;
 import std.stdio;
+import events.interfaces;
 
 struct Key {
 	uint mod;
@@ -30,7 +31,7 @@ struct Key {
     }
 }
 
-class KeyboardEvents
+class KeyboardEvents : EventInterface
 {
 	Key[] keys;
 

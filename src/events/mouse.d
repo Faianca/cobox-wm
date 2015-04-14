@@ -1,5 +1,7 @@
 module events.mouse;
 
+
+import events.interfaces;
 import kernel;
 import old;
 import config;
@@ -34,7 +36,7 @@ struct Button
     }
 };
 
-class MouseEvents
+class MouseEvents : EventInterface
 {
 	Button[] buttons;
 
@@ -59,6 +61,11 @@ class MouseEvents
 	Button[] getButtons()
 	{
 		return this.buttons;
+	}
+	
+	void addEvent()
+	{
+
 	}
 
 	void listen(XEvent *e)
