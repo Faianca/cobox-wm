@@ -4,6 +4,7 @@ import kernel;
 import old;
 import config;
 import types;
+import cboxapp;
 
 import deimos.X11.X;
 import deimos.X11.Xlib;
@@ -121,7 +122,7 @@ class KeyboardEvents
 	    XKeyEvent *ev;
 
 	    ev = &e.xkey;
-	    keysym = XKeycodeToKeysym(dpy, cast(KeyCode)ev.keycode, 0);
+	    keysym = XKeycodeToKeysym(AppDisplay.instance().dpy, cast(KeyCode)ev.keycode, 0);
 	    foreach(ref const key; keys) {
 	        if(keysym == key.keysym
 	                && CLEANMASK(key.mod) == CLEANMASK(ev.state)
@@ -139,12 +140,12 @@ class KeyboardEvents
 	        uint[] modifiers = [ 0, LockMask, numlockmask, numlockmask|LockMask ];
 	        KeyCode code;
 
-	        XUngrabKey(dpy, AnyKey, AnyModifier, rootWin);
+	        XUngrabKey(AppDisplay.instance().dpy, AnyKey, AnyModifier, rootWin);
 	        foreach(ref const key; keys) {
-	            code = XKeysymToKeycode(dpy, key.keysym);
+	            code = XKeysymToKeycode(AppDisplay.instance().dpy, key.keysym);
 	            if(code) {
 	                foreach(ref const mod; modifiers) {
-	                    XGrabKey(dpy, code, key.mod | mod, rootWin,
+	                    XGrabKey(AppDisplay.instance().dpy, code, key.mod | mod, rootWin,
 	                             True, GrabModeAsync, GrabModeAsync);
 	                }
 	            }

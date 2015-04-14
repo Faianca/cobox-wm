@@ -22,6 +22,7 @@ import deimos.X11.keysymdef;
 import deimos.X11.Xutil;
 import deimos.X11.Xatom;
 
+import cboxapp;
 import types;
 import utils;
 import legacy;
@@ -60,14 +61,13 @@ static immutable Rule[] rules = [
                                 ];
 
 
-void applyrules(Client *c) {
-    
-
+void applyrules(Client *c) 
+{
     XClassHint ch = { null, null };
     /* rule matching */
     c.isfloating = false;
     c.tags = 0;
-    XGetClassHint(dpy, c.win, &ch);
+    XGetClassHint(AppDisplay.instance().dpy, c.win, &ch);
     immutable auto klass    = ch.res_class ? ch.res_class.to!string : broken;
     immutable auto instance = ch.res_name  ? ch.res_name.to!string : broken;
     foreach(immutable r; rules) {
@@ -206,46 +206,51 @@ void updatebars()
         if (m.barwin)
             continue;
 
-        m.barwin = XCreateWindow(dpy, rootWin, m.wx, m.by, m.ww, bh, 0, DefaultDepth(dpy, screen),
-                                 CopyFromParent, DefaultVisual(dpy, screen),
+        m.barwin = XCreateWindow(AppDisplay.instance().dpy, rootWin, m.wx, m.by, m.ww, bh, 0, DefaultDepth(AppDisplay.instance().dpy, screen),
+                                 CopyFromParent, DefaultVisual(AppDisplay.instance().dpy, screen),
                                  CWOverrideRedirect|CWBackPixmap|CWEventMask, &wa);
 
-        XDefineCursor(dpy, m.barwin, cursor[CurNormal].cursor);
-        XMapRaised(dpy, m.barwin);
+        XDefineCursor(AppDisplay.instance().dpy, m.barwin, cursor[CurNormal].cursor);
+        XMapRaised(AppDisplay.instance().dpy, m.barwin);
     }
 }
 
-bool gettextprop(Window w, Atom atom, out string text) {
+bool gettextprop(Window w, Atom atom, out string text) 
+{
     
     static immutable size_t MAX_TEXT_LENGTH = 256;
     XTextProperty name;
-    XGetTextProperty(dpy, w, &name, atom);
+    XGetTextProperty(AppDisplay.instance().dpy, w, &name, atom);
+
     if(!name.nitems)
         return false;
+
     if(name.encoding == XA_STRING) {
         text = (cast(char*)(name.value)).fromStringz.to!string;
     } else {
         char **list = null;
         int n;
-        if(XmbTextPropertyToTextList(dpy, &name, &list, &n) >= XErrorCode.Success &&
+        if(XmbTextPropertyToTextList(AppDisplay.instance().dpy, &name, &list, &n) >= XErrorCode.Success &&
                 n > 0 &&
                 *list) {
             text = (*list).fromStringz.to!string;
             XFreeStringList(list);
         }
     }
+
     XFree(name.value);
     return true;
 }
 
-long getstate(Window w) {
+long getstate(Window w) 
+{
     int format;
     long result = -1;
     ubyte *p = null;
     ulong n, extra;
     Atom realVal;
 
-    if(XGetWindowProperty(dpy, w, wmatom[WMState], 0L, 2L, false, wmatom[WMState],
+    if(XGetWindowProperty(AppDisplay.instance().dpy, w, wmatom[WMState], 0L, 2L, false, wmatom[WMState],
        &realVal, &format, &n, &extra, cast(ubyte **)&p) != XErrorCode.Success) {
        	writeln("here");
         return -1;
@@ -262,6 +267,7 @@ void updatetitle(Client *c) {
     if(!gettextprop(c.win, netatom[NetWMName], c.name)) {
         gettextprop(c.win, XA_WM_NAME, c.name);
     }
+
     if(c.name.length == 0) { /* hack to mark broken clients */
         c.name = broken;
     }
@@ -282,7 +288,7 @@ void manage(Window w, XWindowAttributes *wa)
     updatetitle(c);
 
     c.mon = null;
-    if(XGetTransientForHint(dpy, w, &trans)) {
+    if(XGetTransientForHint(AppDisplay.instance().dpy, w, &trans)) {
         t = wintoclient(trans);
         if(t) {
             c.mon = t.mon;
@@ -311,29 +317,37 @@ void manage(Window w, XWindowAttributes *wa)
     c.bw = borderpx;
 
     wc.border_width = c.bw;
-    XConfigureWindow(dpy, w, CWBorderWidth, &wc);
-    XSetWindowBorder(dpy, w, scheme[SchemeNorm].border.rgb);
+    XConfigureWindow(AppDisplay.instance().dpy, w, CWBorderWidth, &wc);
+    XSetWindowBorder(AppDisplay.instance().dpy, w, scheme[SchemeNorm].border.rgb);
+
     configure(c); /* propagates border_width, if size doesn't change */
     updatewindowtype(c);
     updatesizehints(c);
     updatewmhints(c);
-    XSelectInput(dpy, w, EnterWindowMask|FocusChangeMask|PropertyChangeMask|StructureNotifyMask);
+    XSelectInput(AppDisplay.instance().dpy, w, EnterWindowMask|FocusChangeMask|PropertyChangeMask|StructureNotifyMask);
     mouseEventHandler.grabbuttons(c, false);
+    
     if(!c.isfloating)
         c.isfloating = c.oldstate = trans != None || c.isfixed;
+
     if(c.isfloating)
-        XRaiseWindow(dpy, c.win);
+        XRaiseWindow(AppDisplay.instance().dpy, c.win);
+
     attach(c);
     attachstack(c);
-    XChangeProperty(dpy, rootWin, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend,
+
+    XChangeProperty(AppDisplay.instance().dpy, rootWin, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend,
                     cast(ubyte*)(&(c.win)), 1);
-    XMoveResizeWindow(dpy, c.win, c.x + 2 * sw, c.y, c.w, c.h); /* some windows require this */
+    XMoveResizeWindow(AppDisplay.instance().dpy, c.win, c.x + 2 * sw, c.y, c.w, c.h); /* some windows require this */
+    
     setclientstate(c, NormalState);
+
     if (c.mon == selmon)
         unfocus(selmon.sel, false);
     c.mon.sel = c;
+
     arrange(c.mon);
-    XMapWindow(dpy, c.win);
+    XMapWindow(AppDisplay.instance().dpy, c.win);
     focus(null);
 }
 
@@ -346,13 +360,6 @@ MouseEvents mouseEventHandler;
 
 class Kernel
 {
-    //static Display *dpy;
-
-    this(Display* dpy)
-    {
-        dpy = dpy;
-    }
-
     void setup() 
     {
         XSetWindowAttributes wa;
@@ -361,29 +368,29 @@ class Kernel
         sigchld(0);
 
         /* init screen */
-        screen = DefaultScreen(dpy);
-        rootWin = RootWindow(dpy, screen);
-        fnt = new Fnt(dpy, font);
-        sw = DisplayWidth(dpy, screen);
-        sh = DisplayHeight(dpy, screen);
+        screen = DefaultScreen(AppDisplay.instance().dpy);
+        rootWin = RootWindow(AppDisplay.instance().dpy, screen);
+        fnt = new Fnt(AppDisplay.instance().dpy, font);
+        sw = DisplayWidth(AppDisplay.instance().dpy, screen);
+        sh = DisplayHeight(AppDisplay.instance().dpy, screen);
         bh = fnt.h + 2;
-        drw = new Drw(dpy, screen, rootWin, sw, sh);
+        drw = new Drw(AppDisplay.instance().dpy, screen, rootWin, sw, sh);
         drw.setfont(fnt);
         updategeom();
 
         /* init atoms */
-        wmatom[WMProtocols] = XInternAtom(dpy, cast(char*)("WM_PROTOCOLS".toStringz), false);
-        wmatom[WMDelete] = XInternAtom(dpy, cast(char*)("WM_DELETE_WINDOW".toStringz), false);
-        wmatom[WMState] = XInternAtom(dpy, cast(char*)("WM_STATE".toStringz), false);
-        wmatom[WMTakeFocus] = XInternAtom(dpy, cast(char*)("WM_TAKE_FOCUS".toStringz), false);
-        netatom[NetActiveWindow] = XInternAtom(dpy, cast(char*)("_NET_ACTIVE_WINDOW".toStringz), false);
-        netatom[NetSupported] = XInternAtom(dpy, cast(char*)("_NET_SUPPORTED".toStringz), false);
-        netatom[NetWMName] = XInternAtom(dpy, cast(char*)("_NET_WM_NAME".toStringz), false);
-        netatom[NetWMState] = XInternAtom(dpy, cast(char*)("_NET_WM_STATE".toStringz), false);
-        netatom[NetWMFullscreen] = XInternAtom(dpy, cast(char*)("_NET_WM_STATE_FULLSCREEN".toStringz), false);
-        netatom[NetWMWindowType] = XInternAtom(dpy, cast(char*)("_NET_WM_WINDOW_TYPE".toStringz), false);
-        netatom[NetWMWindowTypeDialog] = XInternAtom(dpy, cast(char*)("_NET_WM_WINDOW_TYPE_DIALOG".toStringz), false);
-        netatom[NetClientList] = XInternAtom(dpy, cast(char*)("_NET_CLIENT_LIST".toStringz), false);
+        wmatom[WMProtocols] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("WM_PROTOCOLS".toStringz), false);
+        wmatom[WMDelete] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("WM_DELETE_WINDOW".toStringz), false);
+        wmatom[WMState] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("WM_STATE".toStringz), false);
+        wmatom[WMTakeFocus] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("WM_TAKE_FOCUS".toStringz), false);
+        netatom[NetActiveWindow] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_ACTIVE_WINDOW".toStringz), false);
+        netatom[NetSupported] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_SUPPORTED".toStringz), false);
+        netatom[NetWMName] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_WM_NAME".toStringz), false);
+        netatom[NetWMState] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_WM_STATE".toStringz), false);
+        netatom[NetWMFullscreen] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_WM_STATE_FULLSCREEN".toStringz), false);
+        netatom[NetWMWindowType] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_WM_WINDOW_TYPE".toStringz), false);
+        netatom[NetWMWindowTypeDialog] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_WM_WINDOW_TYPE_DIALOG".toStringz), false);
+        netatom[NetClientList] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_CLIENT_LIST".toStringz), false);
 
         /* init cursors */
         cursor[CurNormal] = new Cur(drw.dpy, CursorFont.XC_left_ptr);
@@ -403,16 +410,16 @@ class Kernel
         updatestatus();
 
         /* EWMH support per view */
-        XChangeProperty(dpy, rootWin, netatom[NetSupported], XA_ATOM, 32,
+        XChangeProperty(AppDisplay.instance().dpy, rootWin, netatom[NetSupported], XA_ATOM, 32,
                         PropModeReplace, cast(ubyte*) netatom, NetLast);
-        XDeleteProperty(dpy, rootWin, netatom[NetClientList]);
+        XDeleteProperty(AppDisplay.instance().dpy, rootWin, netatom[NetClientList]);
 
         /* select for events */
         wa.cursor = cursor[CurNormal].cursor;
         wa.event_mask = SubstructureRedirectMask|SubstructureNotifyMask|ButtonPressMask|PointerMotionMask
                         |EnterWindowMask|LeaveWindowMask|StructureNotifyMask|PropertyChangeMask;
-        XChangeWindowAttributes(dpy, rootWin, CWEventMask|CWCursor, &wa);
-        XSelectInput(dpy, rootWin, wa.event_mask);
+        XChangeWindowAttributes(AppDisplay.instance().dpy, rootWin, CWEventMask|CWCursor, &wa);
+        XSelectInput(AppDisplay.instance().dpy, rootWin, wa.event_mask);
         keyboardEventHandler.grabkeys();
         focus(null);
     }
@@ -421,10 +428,10 @@ class Kernel
     {
         xerrorxlib = XSetErrorHandler(&xerrorstart);
         /* this causes an error if some other window manager is running */
-        XSelectInput(dpy, DefaultRootWindow(dpy), SubstructureRedirectMask);
-        XSync(dpy, false);
+        XSelectInput(AppDisplay.instance().dpy, DefaultRootWindow(AppDisplay.instance().dpy), SubstructureRedirectMask);
+        XSync(AppDisplay.instance().dpy, false);
         XSetErrorHandler(&xerror);
-        XSync(dpy, false);
+        XSync(AppDisplay.instance().dpy, false);
     }
 
     void scan() 
@@ -434,18 +441,18 @@ class Kernel
         Window* wins = null;
         XWindowAttributes wa;
 
-        if(XQueryTree(dpy, rootWin, &d1, &d2, &wins, &num)) {
+        if(XQueryTree(AppDisplay.instance().dpy, rootWin, &d1, &d2, &wins, &num)) {
             for(i = 0; i < num; i++) {
-                if(!XGetWindowAttributes(dpy, wins[i], &wa)
-                        || wa.override_redirect || XGetTransientForHint(dpy, wins[i], &d1))
+                if(!XGetWindowAttributes(AppDisplay.instance().dpy, wins[i], &wa)
+                        || wa.override_redirect || XGetTransientForHint(AppDisplay.instance().dpy, wins[i], &d1))
                     continue;
                 if(wa.map_state == IsViewable || getstate(wins[i]) == IconicState)
                     manage(wins[i], &wa);
             }
             for(i = 0; i < num; i++) { /* now the transients */
-                if(!XGetWindowAttributes(dpy, wins[i], &wa))
+                if(!XGetWindowAttributes(AppDisplay.instance().dpy, wins[i], &wa))
                     continue;
-                if(XGetTransientForHint(dpy, wins[i], &d1)
+                if(XGetTransientForHint(AppDisplay.instance().dpy, wins[i], &d1)
                         && (wa.map_state == IsViewable || getstate(wins[i]) == IconicState))
                     manage(wins[i], &wa);
             }
@@ -459,8 +466,8 @@ class Kernel
         extern(C) __gshared XEvent ev;
 
         /* main event loop */
-        XSync(dpy, false);
-        while(running && !XNextEvent(dpy, &ev)) {
+        XSync(AppDisplay.instance().dpy, false);
+        while(running && !XNextEvent(AppDisplay.instance().dpy, &ev)) {
             eventManager.listen(&ev);
         }
     }
@@ -486,6 +493,6 @@ class Kernel
     void close()
     {
         cleanup();
-        XCloseDisplay(dpy);
+        XCloseDisplay(AppDisplay.instance().dpy);
     }
 }

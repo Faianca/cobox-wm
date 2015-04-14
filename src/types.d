@@ -29,7 +29,6 @@ static int bh, blw = 0;      /* bar geometry */
 
 static Atom[WMLast] wmatom;
 static Atom[NetLast] netatom;
-static Display *dpy;
 static Monitor *mons, selmon;
 static Window rootWin;
 

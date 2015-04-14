@@ -4,6 +4,7 @@ import kernel;
 import old;
 import config;
 import types;
+import cboxapp;
 
 import deimos.X11.X;
 import deimos.X11.Xlib;
@@ -75,12 +76,12 @@ class MouseEvents
 	    updatenumlockmask();
 	    uint i, j;
 	    uint[] modifiers = [ 0, LockMask, numlockmask, numlockmask|LockMask ];
-	    XUngrabButton(dpy, AnyButton, AnyModifier, c.win);
+	    XUngrabButton(AppDisplay.instance().dpy, AnyButton, AnyModifier, c.win);
 	    if(focused) {
 	        foreach(ref const but; this.buttons) {
 	            if(but.click == ClkClientWin) {
 	                foreach(ref const mod; modifiers) {
-	                    XGrabButton(dpy, but.button,
+	                    XGrabButton(AppDisplay.instance().dpy, but.button,
 	                                but.mask | mod,
 	                                c.win, false, BUTTONMASK,
 	                                GrabModeAsync, GrabModeSync,
@@ -89,7 +90,7 @@ class MouseEvents
 	            }
 	        }
 	    } else {
-	        XGrabButton(dpy, AnyButton, AnyModifier, c.win, false,
+	        XGrabButton(AppDisplay.instance().dpy, AnyButton, AnyModifier, c.win, false,
 	                    BUTTONMASK, GrabModeAsync, GrabModeSync, None, None);
 	    }
 	}
@@ -99,7 +100,7 @@ class MouseEvents
 	    XModifierKeymap *modmap;
 
 	    numlockmask = 0;
-	    modmap = XGetModifierMapping(dpy);
+	    modmap = XGetModifierMapping(AppDisplay.instance().dpy);
 	    foreach_reverse(i; 0..7) {
 	        if(numlockmask == 0) {
 	            break;
@@ -108,7 +109,7 @@ class MouseEvents
 	        foreach_reverse(j; 0..modmap.max_keypermod-1) {
 	            //for(j = modmap.max_keypermod-1; j >= 0; --j) {
 	            if(modmap.modifiermap[i * modmap.max_keypermod + j] ==
-	                    XKeysymToKeycode(dpy, XK_Num_Lock)) {
+	                    XKeysymToKeycode(AppDisplay.instance().dpy, XK_Num_Lock)) {
 	                numlockmask = (1 << i);
 	                break;
 	            }

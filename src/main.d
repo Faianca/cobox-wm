@@ -2,6 +2,7 @@ module main;
 
 import kernel;
 import types;
+import cboxapp;
 
 import std.stdio;
 import deimos.X11.X;
@@ -20,13 +21,12 @@ int main(string[] args)
 
 	writeln("Codename: Nikola 0.2");
 
-	dpy = XOpenDisplay(null);
-    if(dpy is null) {
+    if(AppDisplay.instance().dpy is null) {
         stderr.writeln("cbox: cannot open display");
         return -1;
     }
 
-	Kernel kernel = new Kernel(dpy);
+	Kernel kernel = new Kernel();
 	int response = kernel.boot();
 
 	writeln("cbox-"~VERSION~" end");
