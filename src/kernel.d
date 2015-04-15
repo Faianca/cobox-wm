@@ -31,64 +31,25 @@ import config;
 import events.handler;
 import events.keyboard;
 import events.mouse;
+import window;
+import helper.x11;
+import gui.cursor;
+import gui.font;
+import gui.bar;
+import gui.layout;
 
 static uint numlockmask = 0;
 
 static Drw *drw;
 static Fnt *fnt;
-static Cur*[CurLast] cursor;
 static ClrScheme[SchemeLast] scheme;
-
 static Key[] keys;
 /* button definitions */
 /* click can be ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
 static Button[] buttons;
-
-immutable string broken = "broken";
-static immutable string VERSION = "0.1 Cobox";
-static bool running = true;
 static void function(XEvent*)[LASTEvent] handler;
-immutable string[] tags = [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ];
+static immutable string VERSION = "0.1 Cobox";
 
-static immutable Rule[] rules = [
-/* xprop(1):
- *  WM_CLASS(STRING) = instance, klass
- *  WM_NAME(STRING) = title
- */
-/* klass      instance    title       tags mask     isfloating   monitor */
-{ "Gimp",     null,       null,       0,            true,        -1 },
-{ "Firefox",  null,       null,       1 << 8,       false,       -1 },
-                                ];
-
-
-void applyrules(Client *c) 
-{
-    XClassHint ch = { null, null };
-    /* rule matching */
-    c.isfloating = false;
-    c.tags = 0;
-    XGetClassHint(AppDisplay.instance().dpy, c.win, &ch);
-    immutable auto klass    = ch.res_class ? ch.res_class.to!string : broken;
-    immutable auto instance = ch.res_name  ? ch.res_name.to!string : broken;
-    foreach(immutable r; rules) {
-        if( (r.title.length==0 || r.title.indexOf(c.name) >= 0) &&
-                (r.klass.length==0 || r.klass.indexOf(klass) >= 0) &&
-                (r.instance.length==0 || r.instance.indexOf(instance) >= 0)) {
-            c.isfloating = r.isfloating;
-            c.tags |= r.tags;
-
-            auto m = mons.range.find!(mon => mon.num == r.monitor).front;
-            if(m) {
-                c.mon = m;
-            }
-        }
-    }
-    if(ch.res_class)
-        XFree(ch.res_class);
-    if(ch.res_name)
-        XFree(ch.res_name);
-    c.tags = c.tags & TAGMASK ? c.tags & TAGMASK : c.mon.tagset[c.mon.seltags];
-}
 
 bool applysizehints(Client *c, ref int x, ref int y, ref int w, ref int h, bool interact) {
     
@@ -194,53 +155,7 @@ void attachstack(Client *c) {
 }
 
 
-void updatebars()
-{
-    XSetWindowAttributes wa = {
-		override_redirect : True,
-		background_pixmap : ParentRelative,
-		event_mask :  ButtonPressMask|ExposureMask
-    };
 
-    foreach(m; mons.range) {
-        if (m.barwin)
-            continue;
-
-        m.barwin = XCreateWindow(AppDisplay.instance().dpy, rootWin, m.wx, m.by, m.ww, bh, 0, DefaultDepth(AppDisplay.instance().dpy, screen),
-                                 CopyFromParent, DefaultVisual(AppDisplay.instance().dpy, screen),
-                                 CWOverrideRedirect|CWBackPixmap|CWEventMask, &wa);
-
-        XDefineCursor(AppDisplay.instance().dpy, m.barwin, cursor[CurNormal].cursor);
-        XMapRaised(AppDisplay.instance().dpy, m.barwin);
-    }
-}
-
-bool gettextprop(Window w, Atom atom, out string text) 
-{
-    
-    static immutable size_t MAX_TEXT_LENGTH = 256;
-    XTextProperty name;
-    XGetTextProperty(AppDisplay.instance().dpy, w, &name, atom);
-
-    if(!name.nitems)
-        return false;
-
-    if(name.encoding == XA_STRING) {
-        text = (cast(char*)(name.value)).fromStringz.to!string;
-    } else {
-        char **list = null;
-        int n;
-        if(XmbTextPropertyToTextList(AppDisplay.instance().dpy, &name, &list, &n) >= XErrorCode.Success &&
-                n > 0 &&
-                *list) {
-            text = (*list).fromStringz.to!string;
-            XFreeStringList(list);
-        }
-    }
-
-    XFree(name.value);
-    return true;
-}
 
 long getstate(Window w) 
 {
@@ -262,10 +177,10 @@ long getstate(Window w)
     return result;
 }
 
-void updatetitle(Client *c) {
-    
-    if(!gettextprop(c.win, netatom[NetWMName], c.name)) {
-        gettextprop(c.win, XA_WM_NAME, c.name);
+void updatetitle(Client *c) 
+{
+    if(!X11Helper.gettextprop(c.win, netatom[NetWMName], c.name)) {
+        X11Helper.gettextprop(c.win, XA_WM_NAME, c.name);
     }
 
     if(c.name.length == 0) { /* hack to mark broken clients */
@@ -273,93 +188,169 @@ void updatetitle(Client *c) {
     }
 }
 
-void manage(Window w, XWindowAttributes *wa) 
-{
-    
-    Client *c, t = null;
-    Window trans = None;
-    XWindowChanges wc;
+    void applyrules(Client *c) 
+    {
+        XClassHint ch = { null, null };
+        /* rule matching */
+        c.isfloating = false;
+        c.tags = 0;
+        XGetClassHint(AppDisplay.instance().dpy, c.win, &ch);
+        immutable auto klass    = ch.res_class ? ch.res_class.to!string : broken;
+        immutable auto instance = ch.res_name  ? ch.res_name.to!string : broken;
+        foreach(immutable r; rules) {
+            if( (r.title.length==0 || r.title.indexOf(c.name) >= 0) &&
+                    (r.klass.length==0 || r.klass.indexOf(klass) >= 0) &&
+                    (r.instance.length==0 || r.instance.indexOf(instance) >= 0)) {
+                c.isfloating = r.isfloating;
+                c.tags |= r.tags;
 
-    c = new Client();
-    if(c is null) {
-        die("fatal: could not malloc() %u bytes\n", Client.sizeof);
-    }
-    c.win = w;
-    updatetitle(c);
-
-    c.mon = null;
-    if(XGetTransientForHint(AppDisplay.instance().dpy, w, &trans)) {
-        t = wintoclient(trans);
-        if(t) {
-            c.mon = t.mon;
-            c.tags = t.tags;
+                auto m = mons.range.find!(mon => mon.num == r.monitor).front;
+                if(m) {
+                    c.mon = m;
+                }
+            }
         }
-    } 
-    if(!c.mon) {
-        c.mon = selmon;
-        applyrules(c);
+        if(ch.res_class)
+            XFree(ch.res_class);
+        if(ch.res_name)
+            XFree(ch.res_name);
+        c.tags = c.tags & TAGMASK ? c.tags & TAGMASK : c.mon.tagset[c.mon.seltags];
     }
-    /* geometry */
-    c.x = c.oldx = wa.x;
-    c.y = c.oldy = wa.y;
-    c.w = c.oldw = wa.width;
-    c.h = c.oldh = wa.height;
-    c.oldbw = wa.border_width;
 
-    if(c.x + WIDTH(c) > c.mon.mx + c.mon.mw)
-        c.x = c.mon.mx + c.mon.mw - WIDTH(c);
-    if(c.y + HEIGHT(c) > c.mon.my + c.mon.mh)
-        c.y = c.mon.my + c.mon.mh - HEIGHT(c);
-    c.x = max(c.x, c.mon.mx);
-    /* only fix client y-offset, if the client center might cover the bar */
-    c.y = max(c.y, ((c.mon.by == c.mon.my) && (c.x + (c.w / 2) >= c.mon.wx)
-                    && (c.x + (c.w / 2) < c.mon.wx + c.mon.ww)) ? bh : c.mon.my);
-    c.bw = borderpx;
+    void manage(Window w, XWindowAttributes *wa) 
+    {
+        
+        Client *c, t = null;
+        Window trans = None;
+        XWindowChanges wc;
 
-    wc.border_width = c.bw;
-    XConfigureWindow(AppDisplay.instance().dpy, w, CWBorderWidth, &wc);
-    XSetWindowBorder(AppDisplay.instance().dpy, w, scheme[SchemeNorm].border.rgb);
+        c = new Client();
+        if(c is null) {
+            die("fatal: could not malloc() %u bytes\n", Client.sizeof);
+        }
+        c.win = w;
+        updatetitle(c);
 
-    configure(c); /* propagates border_width, if size doesn't change */
-    updatewindowtype(c);
-    updatesizehints(c);
-    updatewmhints(c);
-    XSelectInput(AppDisplay.instance().dpy, w, EnterWindowMask|FocusChangeMask|PropertyChangeMask|StructureNotifyMask);
-    mouseEventHandler.grabbuttons(c, false);
-    
-    if(!c.isfloating)
-        c.isfloating = c.oldstate = trans != None || c.isfixed;
+        c.mon = null;
+        if(XGetTransientForHint(AppDisplay.instance().dpy, w, &trans)) {
+            t = wintoclient(trans);
+            if(t) {
+                c.mon = t.mon;
+                c.tags = t.tags;
+            }
+        } 
 
-    if(c.isfloating)
-        XRaiseWindow(AppDisplay.instance().dpy, c.win);
+        if(!c.mon) {
+            c.mon = selmon;
+            applyrules(c);
+        }
 
-    attach(c);
-    attachstack(c);
+        /* geometry */
+        c.x = c.oldx = wa.x;
+        c.y = c.oldy = wa.y;
+        c.w = c.oldw = wa.width;
+        c.h = c.oldh = wa.height;
+        c.oldbw = wa.border_width;
 
-    XChangeProperty(AppDisplay.instance().dpy, rootWin, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend,
-                    cast(ubyte*)(&(c.win)), 1);
-    XMoveResizeWindow(AppDisplay.instance().dpy, c.win, c.x + 2 * sw, c.y, c.w, c.h); /* some windows require this */
-    
-    setclientstate(c, NormalState);
+        if(c.x + WIDTH(c) > c.mon.mx + c.mon.mw)
+            c.x = c.mon.mx + c.mon.mw - WIDTH(c);
+        if(c.y + HEIGHT(c) > c.mon.my + c.mon.mh)
+            c.y = c.mon.my + c.mon.mh - HEIGHT(c);
+        c.x = max(c.x, c.mon.mx);
+        /* only fix client y-offset, if the client center might cover the bar */
+        c.y = max(c.y, ((c.mon.by == c.mon.my) && (c.x + (c.w / 2) >= c.mon.wx)
+                        && (c.x + (c.w / 2) < c.mon.wx + c.mon.ww)) ? bh : c.mon.my);
+        c.bw = borderpx;
 
-    if (c.mon == selmon)
-        unfocus(selmon.sel, false);
-    c.mon.sel = c;
+        wc.border_width = c.bw;
+        XConfigureWindow(AppDisplay.instance().dpy, w, CWBorderWidth, &wc);
+        XSetWindowBorder(AppDisplay.instance().dpy, w, scheme[SchemeNorm].border.rgb);
 
-    arrange(c.mon);
-    XMapWindow(AppDisplay.instance().dpy, c.win);
-    focus(null);
+        configure(c); /* propagates border_width, if size doesn't change */
+        updatewindowtype(c);
+        updatesizehints(c);
+        updatewmhints(c);
+
+        XSelectInput(AppDisplay.instance().dpy, w, EnterWindowMask|FocusChangeMask|PropertyChangeMask|StructureNotifyMask);
+        mouseEventHandler.grabbuttons(c, false);
+        
+        if(!c.isfloating)
+            c.isfloating = c.oldstate = trans != None || c.isfixed;
+
+        if(c.isfloating)
+            XRaiseWindow(AppDisplay.instance().dpy, c.win);
+
+        attach(c);
+        attachstack(c);
+
+        XChangeProperty(AppDisplay.instance().dpy, rootWin, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend,
+                        cast(ubyte*)(&(c.win)), 1);
+        XMoveResizeWindow(AppDisplay.instance().dpy, c.win, c.x + 2 * sw, c.y, c.w, c.h); /* some windows require this */
+        
+        setclientstate(c, NormalState);
+
+        if (c.mon == selmon)
+            unfocus(selmon.sel, false);
+        c.mon.sel = c;
+
+        arrange(c.mon);
+        XMapWindow(AppDisplay.instance().dpy, c.win);
+        focus(null);
+    }
+
+    void unmanage(Client *c, bool destroyed) 
+    {
+        Monitor *m = c.mon;
+        XWindowChanges wc;
+
+        /* The server grab construct avoids race conditions. */
+        detach(c);
+        detachstack(c);
+        if(!destroyed) {
+            wc.border_width = c.oldbw;
+            XGrabServer(AppDisplay.instance().dpy);
+            XSetErrorHandler(&xerrordummy);
+            XConfigureWindow(AppDisplay.instance().dpy, c.win, CWBorderWidth, &wc); /* restore border */
+            XUngrabButton(AppDisplay.instance().dpy, AnyButton, AnyModifier, c.win);
+            setclientstate(c, WithdrawnState);
+            XSync(AppDisplay.instance().dpy, false);
+            XSetErrorHandler(&xerror);
+            XUngrabServer(AppDisplay.instance().dpy);
+        }
+        DGC.free(c);
+        focus(null);
+        updateclientlist();
+        arrange(m);
+    }
+
+void quit(const Arg *arg) 
+{
+    AppDisplay.instance().running = false;
 }
-
-
 
 EventHandler eventManager;
 KeyboardEvents keyboardEventHandler;
 MouseEvents mouseEventHandler;
 
+static Atom[WMLast] wmatom;
+static Atom[NetLast] netatom;
 
 class Kernel
 {
+    WindowManager windowManager;
+
+    this()
+    {
+        keyboardEventHandler = new KeyboardEvents();
+
+        mouseEventHandler = new MouseEvents();
+        eventManager = new EventHandler(keyboardEventHandler, mouseEventHandler);
+        windowManager = new WindowManager();
+
+        wmatom = windowManager.getAllAtoms("WMLast");
+        netatom = windowManager.getAllAtoms("NetLast");
+    }
+
     void setup() 
     {
         XSetWindowAttributes wa;
@@ -370,27 +361,15 @@ class Kernel
         /* init screen */
         screen = DefaultScreen(AppDisplay.instance().dpy);
         rootWin = RootWindow(AppDisplay.instance().dpy, screen);
+
         fnt = new Fnt(AppDisplay.instance().dpy, font);
         sw = DisplayWidth(AppDisplay.instance().dpy, screen);
         sh = DisplayHeight(AppDisplay.instance().dpy, screen);
         bh = fnt.h + 2;
+
         drw = new Drw(AppDisplay.instance().dpy, screen, rootWin, sw, sh);
         drw.setfont(fnt);
         updategeom();
-
-        /* init atoms */
-        wmatom[WMProtocols] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("WM_PROTOCOLS".toStringz), false);
-        wmatom[WMDelete] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("WM_DELETE_WINDOW".toStringz), false);
-        wmatom[WMState] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("WM_STATE".toStringz), false);
-        wmatom[WMTakeFocus] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("WM_TAKE_FOCUS".toStringz), false);
-        netatom[NetActiveWindow] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_ACTIVE_WINDOW".toStringz), false);
-        netatom[NetSupported] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_SUPPORTED".toStringz), false);
-        netatom[NetWMName] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_WM_NAME".toStringz), false);
-        netatom[NetWMState] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_WM_STATE".toStringz), false);
-        netatom[NetWMFullscreen] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_WM_STATE_FULLSCREEN".toStringz), false);
-        netatom[NetWMWindowType] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_WM_WINDOW_TYPE".toStringz), false);
-        netatom[NetWMWindowTypeDialog] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_WM_WINDOW_TYPE_DIALOG".toStringz), false);
-        netatom[NetClientList] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_CLIENT_LIST".toStringz), false);
 
         /* init cursors */
         cursor[CurNormal] = new Cur(drw.dpy, CursorFont.XC_left_ptr);
@@ -410,17 +389,31 @@ class Kernel
         updatestatus();
 
         /* EWMH support per view */
-        XChangeProperty(AppDisplay.instance().dpy, rootWin, netatom[NetSupported], XA_ATOM, 32,
-                        PropModeReplace, cast(ubyte*) netatom, NetLast);
-        XDeleteProperty(AppDisplay.instance().dpy, rootWin, netatom[NetClientList]);
+        XChangeProperty(
+            AppDisplay.instance().dpy, 
+            rootWin, 
+            windowManager.getAtom("NetLast",NetSupported), 
+            XA_ATOM, 32,
+            PropModeReplace, 
+            cast(ubyte*) windowManager.getAllAtoms("NetLast"), 
+            NetLast
+        );
+
+        XDeleteProperty(
+            AppDisplay.instance().dpy, 
+            rootWin, 
+            windowManager.getAtom("NetLast", NetClientList)
+        );
 
         /* select for events */
         wa.cursor = cursor[CurNormal].cursor;
         wa.event_mask = SubstructureRedirectMask|SubstructureNotifyMask|ButtonPressMask|PointerMotionMask
                         |EnterWindowMask|LeaveWindowMask|StructureNotifyMask|PropertyChangeMask;
+
         XChangeWindowAttributes(AppDisplay.instance().dpy, rootWin, CWEventMask|CWCursor, &wa);
         XSelectInput(AppDisplay.instance().dpy, rootWin, wa.event_mask);
         keyboardEventHandler.grabkeys();
+
         focus(null);
     }
 
@@ -467,17 +460,13 @@ class Kernel
 
         /* main event loop */
         XSync(AppDisplay.instance().dpy, false);
-        while(running && !XNextEvent(AppDisplay.instance().dpy, &ev)) {
+        while(AppDisplay.instance().running && !XNextEvent(AppDisplay.instance().dpy, &ev)) {
             eventManager.listen(&ev);
         }
     }
 
     int boot()
     {
-        keyboardEventHandler = new KeyboardEvents();
-        mouseEventHandler = new MouseEvents();
-        eventManager = new EventHandler(keyboardEventHandler, mouseEventHandler);
-        
         keys = keyboardEventHandler.getKeys();
         buttons = mouseEventHandler.getButtons();
 

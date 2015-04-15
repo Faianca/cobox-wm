@@ -102,29 +102,6 @@ class MouseEvents : EventInterface
 	    }
 	}
 
-	private void updatenumlockmask() 
-	{
-	    XModifierKeymap *modmap;
-
-	    numlockmask = 0;
-	    modmap = XGetModifierMapping(AppDisplay.instance().dpy);
-	    foreach_reverse(i; 0..7) {
-	        if(numlockmask == 0) {
-	            break;
-	        }
-	        //for(i = 7; numlockmask == 0 && i >= 0; --i) {
-	        foreach_reverse(j; 0..modmap.max_keypermod-1) {
-	            //for(j = modmap.max_keypermod-1; j >= 0; --j) {
-	            if(modmap.modifiermap[i * modmap.max_keypermod + j] ==
-	                    XKeysymToKeycode(AppDisplay.instance().dpy, XK_Num_Lock)) {
-	                numlockmask = (1 << i);
-	                break;
-	            }
-	        }
-	    }
-	    XFreeModifiermap(modmap);
-	}
-
 	void buttonpress(XEvent *e) 
 	{
 	    uint i, x, click;

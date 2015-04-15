@@ -1,5 +1,3 @@
-module main;
-
 import kernel;
 import types;
 import cboxapp;

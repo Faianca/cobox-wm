@@ -1,7 +1,5 @@
 module old;
 import core.memory;
-alias DGC = core.memory.GC;
-alias XGC = deimos.X11.Xlib.GC;
 
 import core.sys.posix.signal;
 import core.sys.posix.sys.wait;
@@ -30,6 +28,33 @@ import legacy;
 import utils;
 import config;
 import cboxapp;
+import window;
+import helper.x11;
+import gui.cursor;
+import gui.font;
+import gui.layout;
+import gui.bar;
+
+void updatenumlockmask() 
+{
+    XModifierKeymap *modmap;
+
+    numlockmask = 0;
+    modmap = XGetModifierMapping(AppDisplay.instance().dpy);
+    foreach_reverse(i; 0..7) {
+        if(numlockmask == 0) {
+            break;
+        }
+        foreach_reverse(j; 0..modmap.max_keypermod-1) {
+            if(modmap.modifiermap[i * modmap.max_keypermod + j] ==
+                    XKeysymToKeycode(AppDisplay.instance().dpy, XK_Num_Lock)) {
+                numlockmask = (1 << i);
+                break;
+            }
+        }
+    }
+    XFreeModifiermap(modmap);
+}
 
 void updateclientlist() {
     
@@ -44,62 +69,7 @@ void updateclientlist() {
                             cast(ubyte *)&(c.win), 1);
 }
 
-void drawbar(Monitor *m) {
-    
-    uint occ = 0, urg = 0;
 
-    foreach(c; m.clients.range!"next") {
-        occ |= c.tags;
-        if(c.isurgent) {
-            urg |= c.tags;
-        }
-    }
-    int x = 0, w;
-    foreach(i, tag; tags) {
-        w = TEXTW(tag);
-        drw.setscheme((m.tagset[m.seltags] & (1 << i)) ? &scheme[SchemeSel] : &scheme[SchemeNorm]);
-        drw.text(x, 0, w, bh, tag, urg & 1 << i);
-        drw.rect(x, 0, w, bh, m == selmon && selmon.sel && selmon.sel.tags & 1 << i,
-                 occ & 1 << i, urg & 1 << i);
-        x += w;
-    }
-    w = blw = TEXTW(m.ltsymbol);
-    drw.setscheme(&scheme[SchemeNorm]);
-    drw.text(x, 0, w, bh, m.ltsymbol, 0);
-    x += w;
-    int xx = x;
-    if(m == selmon) { /* status is only drawn on selected monitor */
-        w = TEXTW(stext);
-        x = m.ww - w;
-        if(x < xx) {
-            x = xx;
-            w = m.ww - xx;
-        }
-        drw.text(x, 0, w, bh, stext, 0);
-    } else {
-        x = m.ww;
-    }
-    if((w = x - xx) > bh) {
-        x = xx;
-        if(m.sel) {
-            drw.setscheme(m == selmon ? &scheme[SchemeSel] : &scheme[SchemeNorm]);
-            drw.text(x, 0, w, bh, m.sel.name, 0);
-            drw.rect(x, 0, w, bh, m.sel.isfixed, m.sel.isfloating, 0);
-        } else {
-            drw.setscheme(&scheme[SchemeNorm]);
-            drw.text(x, 0, w, bh, null, 0);
-        }
-    }
-    drw.map(m.barwin, 0, 0, m.ww, bh);
-}
-
-void drawbars() {
-    
-    foreach(m; mons.range) {
-        drawbar(m);
-    }
-
-}
 
 
 
@@ -482,7 +452,8 @@ void maprequest(XEvent *e) {
 }
 
 
-void propertynotify(XEvent *e) {
+void propertynotify(XEvent *e) 
+{
     
     Client *c;
     Window trans;
@@ -513,23 +484,22 @@ void propertynotify(XEvent *e) {
                     drawbars();
                     break;
             }
+
             if(ev.atom == XA_WM_NAME || ev.atom == netatom[NetWMName]) {
                 updatetitle(c);
                 if(c == c.mon.sel)
                     drawbar(c.mon);
             }
+
             if(ev.atom == netatom[NetWMWindowType])
                 updatewindowtype(c);
         }
     }
 }
 
-void quit(const Arg *arg) {
-    
-    running = false;
-}
 
-void unmapnotify(XEvent *e) {
+void unmapnotify(XEvent *e) 
+{
     
     Client *c;
     XUnmapEvent *ev = &e.xunmap;
@@ -597,38 +567,6 @@ void sendmon(Client *c, Monitor *m) {
     arrange(null);
 }
 
-void updatebars() {
-    
-    XSetWindowAttributes wa = {
-override_redirect :
-        True,
-background_pixmap :
-        ParentRelative,
-event_mask :
-        ButtonPressMask|ExposureMask
-    };
-    foreach(m; mons.range) {
-        if (m.barwin)
-            continue;
-        m.barwin = XCreateWindow(AppDisplay.instance().dpy, rootWin, m.wx, m.by, m.ww, bh, 0, DefaultDepth(AppDisplay.instance().dpy, screen),
-                                 CopyFromParent, DefaultVisual(AppDisplay.instance().dpy, screen),
-                                 CWOverrideRedirect|CWBackPixmap|CWEventMask, &wa);
-        XDefineCursor(AppDisplay.instance().dpy, m.barwin, cursor[CurNormal].cursor);
-        XMapRaised(AppDisplay.instance().dpy, m.barwin);
-    }
-}
-
-void updatebarpos(Monitor *m) {
-    
-    m.wy = m.my;
-    m.wh = m.mh;
-    if(m.showbar) {
-        m.wh -= bh;
-        m.by = m.topbar ? m.wy : m.wy + m.wh;
-        m.wy = m.topbar ? m.wy + bh : m.wy;
-    } else
-        m.by = -bh;
-}
 
 bool applysizehints(Client *c, ref int x, ref int y, ref int w, ref int h, bool interact) {
     
@@ -737,13 +675,7 @@ void clientmessage(XEvent *e) {
 
 
 
-void togglebar(const Arg *arg) {
-    
-    selmon.showbar = !selmon.showbar;
-    updatebarpos(selmon);
-    XMoveResizeWindow(AppDisplay.instance().dpy, selmon.barwin, selmon.wx, selmon.by, selmon.ww, bh);
-    arrange(selmon);
-}
+
 
 void togglefloating(const Arg *arg) {
     
@@ -1059,28 +991,6 @@ bool updategeom() {
     return dirty;
 }
 
-void updatenumlockmask() {
-    
-    XModifierKeymap *modmap;
-
-    numlockmask = 0;
-    modmap = XGetModifierMapping(AppDisplay.instance().dpy);
-    foreach_reverse(i; 0..7) {
-        if(numlockmask == 0) {
-            break;
-        }
-        //for(i = 7; numlockmask == 0 && i >= 0; --i) {
-        foreach_reverse(j; 0..modmap.max_keypermod-1) {
-            //for(j = modmap.max_keypermod-1; j >= 0; --j) {
-            if(modmap.modifiermap[i * modmap.max_keypermod + j] ==
-                    XKeysymToKeycode(AppDisplay.instance().dpy, XK_Num_Lock)) {
-                numlockmask = (1 << i);
-                break;
-            }
-        }
-    }
-    XFreeModifiermap(modmap);
-}
 
 
 void updatewindowtype(Client *c) {
@@ -1436,11 +1346,6 @@ if(isSomeString!X) {
     return drw.font.getexts_width(x) + drw.font.h;
 }
 
-struct Extnts {
-	uint w;
-	uint h;
-}
-
 struct Rule {
 	string klass;
 	string instance;
@@ -1636,288 +1541,6 @@ struct Drw {
 }
 
 
-enum CursorFont : int {
-    XC_num_glyphs = 154,
-    XC_X_cursor = 0,
-    XC_arrow = 2,
-    XC_based_arrow_down = 4,
-    XC_based_arrow_up = 6,
-    XC_boat = 8,
-    XC_bogosity = 10,
-    XC_bottom_left_corner = 12,
-    XC_bottom_right_corner = 14,
-    XC_bottom_side = 16,
-    XC_bottom_tee = 18,
-    XC_box_spiral = 20,
-    XC_center_ptr = 22,
-    XC_circle = 24,
-    XC_clock = 26,
-    XC_coffee_mug = 28,
-    XC_cross = 30,
-    XC_cross_reverse = 32,
-    XC_crosshair = 34,
-    XC_diamond_cross = 36,
-    XC_dot = 38,
-    XC_dotbox = 40,
-    XC_double_arrow = 42,
-    XC_draft_large = 44,
-    XC_draft_small = 46,
-    XC_draped_box = 48,
-    XC_exchange = 50,
-    XC_fleur = 52,
-    XC_gobbler = 54,
-    XC_gumby = 56,
-    XC_hand1 = 58,
-    XC_hand2 = 60,
-    XC_heart = 62,
-    XC_icon = 64,
-    XC_iron_cross = 66,
-    XC_left_ptr = 68,
-    XC_left_side = 70,
-    XC_left_tee = 72,
-    XC_leftbutton = 74,
-    XC_ll_angle = 76,
-    XC_lr_angle = 78,
-    XC_man = 80,
-    XC_middlebutton = 82,
-    XC_mouse = 84,
-    XC_pencil = 86,
-    XC_pirate = 88,
-    XC_plus = 90,
-    XC_question_arrow = 92,
-    XC_right_ptr = 94,
-    XC_right_side = 96,
-    XC_right_tee = 98,
-    XC_rightbutton = 100,
-    XC_rtl_logo = 102,
-    XC_sailboat = 104,
-    XC_sb_down_arrow = 106,
-    XC_sb_h_double_arrow = 108,
-    XC_sb_left_arrow = 110,
-    XC_sb_right_arrow = 112,
-    XC_sb_up_arrow = 114,
-    XC_sb_v_double_arrow = 116,
-    XC_shuttle = 118,
-    XC_sizing = 120,
-    XC_spider = 122,
-    XC_spraycan = 124,
-    XC_star = 126,
-    XC_target = 128,
-    XC_tcross = 130,
-    XC_top_left_arrow = 132,
-    XC_top_left_corner = 134,
-    XC_top_right_corner = 136,
-    XC_top_side = 138,
-    XC_top_tee = 140,
-    XC_trek = 142,
-    XC_ul_angle = 144,
-    XC_umbrella = 146,
-    XC_ur_angle = 148,
-    XC_watch = 150,
-    XC_xterm = 152
-}
-
-/**
- * Font object to encapsulate the X font.
- */
-struct Fnt {
-    int ascent; /// Ascent of the font
-    int descent;/// Descent of the font
-    uint h; /// Height of the font. This equates to ascent + descent.
-    XFontSet set; // Font set to use
-    XFontStruct *xfont; /// The X font we're covering.
-    Display* dpy;
-
-    /**
-     * Ctor. Creates a Fnt object wrapping the specified font for a given display.
-     * Params:
-     *  dpy=        X display
-     *  fontname=   Name of the font to wrap (X font name)
-     * Example:
-     * ---
-     * auto f = Fnt(display, "-*-terminus-medium-r-*-*-16-*-*-*-*-*-*-*");
-     * ---
-     */
-    this(Display *dpy, in string fontname) {
-        if(AppDisplay.instance().dpy is null) {
-            exit(EXIT_FAILURE);
-        }
-        this,dpy = dpy;
-        char *def;
-        char **missing;
-        int n;
-        this.set = XCreateFontSet(AppDisplay.instance().dpy, cast(char*)fontname.toStringz, &missing, &n, &def);
-        if(missing) {
-            while(n--) {
-                //lout("drw: missing fontset: %s", missing[n].fromStringz);
-            }
-            XFreeStringList(missing);
-        }
-        if(this.set) {
-            XFontStruct **xfonts;
-            char **font_names;
-            XExtentsOfFontSet(this.set);
-            n = XFontsOfFontSet(this.set, &xfonts, &font_names);
-            while(n--) {
-                this.ascent = max(this.ascent, (*xfonts).ascent);
-                this.descent = max(this.descent,(*xfonts).descent);
-                xfonts++;
-            }
-        }
-        else {
-            this.xfont = XLoadQueryFont(AppDisplay.instance().dpy, cast(char*)(fontname.toStringz));
-            if(this.xfont is null) {
-                this.xfont = XLoadQueryFont(AppDisplay.instance().dpy, cast(char*)("fixed".toStringz));
-                if(this.xfont is null) {
-                    //lout("error, cannot load font: %s", fontname);
-                    exit(EXIT_FAILURE);
-                }
-            }
-            this.ascent = this.xfont.ascent;
-            this.descent = this.xfont.descent;
-        }
-        this.h = this.ascent + this.descent;
-    }
-
-    /**
-     * Destroy the X resources for this font.
-     */
-    private void destroy(Display* dpy) {
-        if(this.set) {
-            XFreeFontSet(AppDisplay.instance().dpy, this.set);
-        }
-        else if(this.xfont) {
-            XFreeFont(AppDisplay.instance().dpy, this.xfont);
-        }
-        this.set = null;
-        this.xfont = null;
-    }
-
-    /**
-     * Free the given font object associated with a display. This will release
-     * the GC allocated memory.
-     * Params:
-     *  fnt=        Pointer to the font to destroy.
-     *  dpy=        Display associated with the font to destroy
-     * Example:
-     * ---
-     * auto f = Fnt(display, "-*-terminus-medium-r-*-*-16-*-*-*-*-*-*-*");
-     *
-     * // work with the font object
-     *
-     * Fnt.free(f)
-     * ---
-     */
-    static void free(Display* dpy, Fnt* fnt) {
-        fnt.destroy(AppDisplay.instance().dpy);
-        DGC.free(fnt);
-    }
-
-    /**
-     * Get the font extents for a given string.
-     * Params:
-     *  text=   Text to get the extents
-     *  tex=    Extents struct to fill in with the font information
-     */
-    void getexts(in string text, Extnts *tex) {
-        XRectangle r;
-
-        if(text.length == 0) {
-            return;
-        }
-        if(this.set) {
-            XmbTextExtents(this.set, cast(char*)text.ptr, cast(int)text.length, null, &r);
-            tex.w = r.width;
-            tex.h = r.height;
-        }
-        else {
-            tex.h = this.ascent + this.descent;
-            tex.w = XTextWidth(this.xfont, cast(char*)text.ptr, cast(int)text.length);
-        }
-    }
-    /**
-     * Get the rendered width of a string for the wrapped font.
-     * Params:
-     *  text=       Text to get the width for
-     * Returns:
-     *  Width of the text for the wrapped font.
-     */
-    uint getexts_width(in string text) {
-        Extnts tex;
-
-        this.getexts(text, &tex);
-        return tex.w;
-    }
-}
-
-
-struct Clr {
-    ulong rgb;
-
-    this(Drw* drw, in string clrname) {
-        if(drw is null) {
-           // lout(__FUNCTION__~"\n\t--> NULL Drw* parm");
-            exit(EXIT_FAILURE);
-        }
-        Colormap cmap;
-        XColor color;
-
-        cmap = DefaultColormap(drw.dpy, drw.screen);
-        if(!XAllocNamedColor(drw.dpy, cmap, cast(char*)clrname.toStringz, &color, &color)) {
-           // lout("error, cannot allocate color '%s'", clrname);
-            exit(EXIT_FAILURE);
-        }
-        this.rgb = color.pixel;
-    }
-
-    static void free(Clr *clr) {
-        if(clr) {
-            DGC.free(clr);
-        }
-    }
-}
-
-struct ClrScheme {
-	Clr *fg;
-	Clr *bg;
-	Clr *border;
-}
-
-/**
- * Wraps a X cursor.
- */
-struct Cur {
-    Cursor cursor;
-    Display* dpy;
-
-    /**
-     * Ctor constructing a Cursor with a given display object.
-     * Params:
-     *  dpy=        Display object
-     *  shape=      X cursor shape
-     */
-    this(Display* dpy, CursorFont shape) {
-        if(AppDisplay.instance().dpy is null) {
-           // lout(__FUNCTION__~"\n\t--> NULL Display* parm");
-            exit(EXIT_FAILURE);
-        }
-        this.dpy = dpy;
-        this.cursor = XCreateFontCursor(this.dpy, shape);
-    }
-    private void destroy() {
-        XFreeCursor(this.dpy, this.cursor);
-    }
-    static void free(Cur* c) {
-        if(c is null) {
-           // lout(__FUNCTION__~"\n\t--> NULL Cur* parm");
-            exit(EXIT_FAILURE);
-        }
-        c.destroy();
-        DGC.free(c);
-    }
-
-}
-
 void cleanupmon(Monitor *mon) {
     if(mon && mon == mons) {
         mons = mons.next;
@@ -1995,39 +1618,6 @@ void detachstack(Client *c) {
         auto t = c.mon.stack.range!"snext".find!(a=>ISVISIBLE(a)).front;
         c.mon.sel = t;
     }
-}
-
-void updatestatus() {
-    
-    if(!gettextprop(rootWin, XA_WM_NAME, stext)) {
-        stext = "ddwm-"~VERSION;
-    }
-    drawbar(selmon);
-}
-
-void unmanage(Client *c, bool destroyed) {
-    
-    Monitor *m = c.mon;
-    XWindowChanges wc;
-
-    /* The server grab construct avoids race conditions. */
-    detach(c);
-    detachstack(c);
-    if(!destroyed) {
-        wc.border_width = c.oldbw;
-        XGrabServer(AppDisplay.instance().dpy);
-        XSetErrorHandler(&xerrordummy);
-        XConfigureWindow(AppDisplay.instance().dpy, c.win, CWBorderWidth, &wc); /* restore border */
-        XUngrabButton(AppDisplay.instance().dpy, AnyButton, AnyModifier, c.win);
-        setclientstate(c, WithdrawnState);
-        XSync(AppDisplay.instance().dpy, false);
-        XSetErrorHandler(&xerror);
-        XUngrabServer(AppDisplay.instance().dpy);
-    }
-    DGC.free(c);
-    focus(null);
-    updateclientlist();
-    arrange(m);
 }
 
 void detach(Client *c) {

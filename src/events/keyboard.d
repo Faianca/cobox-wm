@@ -5,6 +5,7 @@ import old;
 import config;
 import types;
 import cboxapp;
+import gui.bar;
 
 import deimos.X11.X;
 import deimos.X11.Xlib;
@@ -97,13 +98,12 @@ class KeyboardEvents : EventInterface
 	        Key( MODKEY|ControlMask,           XK_9,      &toggleview,     1<<8 ),
 	        Key( MODKEY|ShiftMask,             XK_9,      &tag,            1<<8 ),
 	        Key( MODKEY|ControlMask|ShiftMask, XK_9,      &toggletag,      1<<8 ),
-	        Key( MODKEY|ShiftMask,             XK_q,      &quit                 )
+	        Key( MODKEY|ShiftMask,             XK_q,      &quit					)
 	    ];
     }
 
     void addEvent()
     {
-    	
     }
 
     void listen(XEvent *e)
