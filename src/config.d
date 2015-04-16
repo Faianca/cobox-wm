@@ -2,6 +2,7 @@ module config;
 import deimos.X11.X;
 import types;
 import old;
+import theme.layout;
 
 enum MODKEY = Mod1Mask;
 
@@ -43,3 +44,8 @@ static immutable string font            = "-*-terminus-medium-r-*-*-16-*-*-*-*-*
 static char[2] dmenumon = "0"; /* component of dmenucmd, manipulated in spawn() */
 static immutable string[] dmenucmd = [ "dmenu_run", "-fn", font, "-nb", normbgcolor, "-nf", normfgcolor, "-sb", selbgcolor, "-sf", selfgcolor];
 static immutable string[] termcmd = ["uxterm"];
+
+/* layout(s) */
+static immutable float mfact      = 0.55; /* factor of master area size [0.05..0.95] */
+static immutable int nmaster      = 1;    /* number of clients in master area */
+static immutable bool resizehints = true; /* true means respect size hints in tiled resizals */

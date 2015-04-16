@@ -8,6 +8,8 @@ import deimos.X11.Xutil;
 import deimos.X11.Xatom;
 import window;
 import types;
+import theme.layout;
+import monitor;
 
 alias DGC = core.memory.GC;
 alias XGC = deimos.X11.Xlib.GC;
@@ -86,79 +88,6 @@ struct Client
         auto popFront() 
         {
             mixin(`client = client.`~NextField~`;`);
-        }
-    }
-}
-
-struct Monitor 
-{
-  string ltsymbol;
-  float mfact;
-  int nmaster;
-  int num;
-  int by;               /* bar geometry */
-  int mx, my, mw, mh;   /* screen size */
-  int wx, wy, ww, wh;   /* window area  */
-  uint seltags;
-  uint sellt;
-  uint[2] tagset;
-  bool showbar;
-  bool topbar;
-  Client *clients;
-  Client *sel;
-  Client *stack;
-  Monitor *next;
-  Window barwin;
-  const(Layout)*[2] lt;
-
-    struct MonitorRange 
-    {
-        Monitor* monitor;
-
-        @property empty() 
-        {
-            return monitor is null;
-        }
-
-        @property auto front() 
-        {
-            return monitor;
-        }
-
-        auto popFront() 
-        {
-            monitor = monitor.next;
-        }
-
-        int opApply(int delegate(Monitor*) dg)
-        {
-            int result = 0;
-            while(!this.empty)
-            {
-                result = dg(this.front);
-                if(result)
-                {
-                    break;
-                }
-                this.popFront;
-            }
-            return result;
-        }
-
-        int opApply(int delegate(size_t, Monitor*) dg) 
-        {
-            int result = 0;
-            size_t ii = 0;
-            while(!this.empty)
-            {
-                result = dg(ii++, this.front);
-                if(result)
-                {
-                    break;
-                }
-                this.popFront;
-            }
-            return result;
         }
     }
 }

@@ -18,6 +18,7 @@ import deimos.X11.keysymdef;
 import deimos.X11.Xutil;
 import deimos.X11.Xatom;
 import helper.x11;
+import std.algorithm;
 
 enum { 
 	NetSupported, 
@@ -96,6 +97,21 @@ class WindowManager
 		}
 
 		return tmp;
+	}
+
+	void showhide(Client *c) 
+	{
+	    if(!c)
+	        return;
+	    if(ISVISIBLE(c)) { /* show clients top down */
+	        XMoveWindow(AppDisplay.instance().dpy, c.win, c.x, c.y);
+	        if((!c.mon.lt[c.mon.sellt].arrange || c.isfloating) && !c.isfullscreen)
+	            resize(c, c.x, c.y, c.w, c.h, false);
+	        showhide(c.snext);
+	    } else { /* hide clients bottom up */
+	        showhide(c.snext);
+	        XMoveWindow(AppDisplay.instance().dpy, c.win, WIDTH(c) * -2, c.y);
+	    }
 	}
 
 	void updatetitle(Client *c) 
@@ -218,7 +234,19 @@ class WindowManager
 	    XMapWindow(AppDisplay.instance().dpy, c.win);
 	    focus(null);
 	}
+}
 
-	
+Atom getatomprop(Client *c, Atom prop) 
+{
+    int di;
+    ulong dl;
+    ubyte* p = null;
+    Atom da, atom = None;
 
+    if(XGetWindowProperty(AppDisplay.instance().dpy, c.win, prop, 0L, atom.sizeof, false, XA_ATOM,
+                          &da, &di, &dl, &dl, &p) == XErrorCode.Success && p) {
+        atom = *cast(Atom *)(p);
+        XFree(p);
+    }
+    return atom;
 }

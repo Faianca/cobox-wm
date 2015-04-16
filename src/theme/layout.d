@@ -1,10 +1,13 @@
-module gui.layout;
+module theme.layout;
 
 import kernel;
 import cboxapp;
 import old;
 import types;
 import utils;
+import theme.manager;
+import window;
+import monitor;
 
 import std.c.stdlib;
 import deimos.X11.X;
@@ -14,6 +17,13 @@ import deimos.X11.Xutil;
 import deimos.X11.Xatom;
 import std.stdio;
 import std.string;
+
+
+struct Layout 
+{
+    const string symbol;
+    void function(Monitor* m) arrange;
+}
 
 struct Clr 
 {

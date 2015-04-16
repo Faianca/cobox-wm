@@ -10,6 +10,7 @@ import utils;
 import config;
 import kernel;
 import helper.x11;
+import monitor;
 
 import deimos.X11.X;
 import deimos.X11.Xlib;

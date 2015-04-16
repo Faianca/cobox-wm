@@ -32,8 +32,10 @@ import window;
 import helper.x11;
 import gui.cursor;
 import gui.font;
-import gui.layout;
+import theme.layout;
+import theme.manager;
 import gui.bar;
+import monitor;
 
 void updatenumlockmask() 
 {
@@ -56,7 +58,8 @@ void updatenumlockmask()
     XFreeModifiermap(modmap);
 }
 
-void updateclientlist() {
+void updateclientlist() 
+{
     
     Client *c;
     Monitor *m;
@@ -71,25 +74,8 @@ void updateclientlist() {
 
 
 
-
-
-Atom getatomprop(Client *c, Atom prop) {
-    
-    int di;
-    ulong dl;
-    ubyte* p = null;
-    Atom da, atom = None;
-
-    if(XGetWindowProperty(AppDisplay.instance().dpy, c.win, prop, 0L, atom.sizeof, false, XA_ATOM,
-                          &da, &di, &dl, &dl, &p) == XErrorCode.Success && p) {
-        atom = *cast(Atom *)(p);
-        XFree(p);
-    }
-    return atom;
-}
-
-bool getrootptr(int *x, int *y) {
-    
+bool getrootptr(int *x, int *y) 
+{
     int di;
     uint dui;
     Window dummy;
@@ -97,7 +83,8 @@ bool getrootptr(int *x, int *y) {
     return XQueryPointer(AppDisplay.instance().dpy, rootWin, &dummy, &dummy, x, y, &di, &di, &dui) != 0;
 }
 
-void setfocus(Client *c) {
+void setfocus(Client *c) 
+{
     
     if(!c.neverfocus) {
         XSetInputFocus(AppDisplay.instance().dpy, c.win, RevertToPointerRoot, CurrentTime);
@@ -109,8 +96,8 @@ void setfocus(Client *c) {
 }
 
 
-bool
-sendevent(Client *c, Atom proto) {
+bool sendevent(Client *c, Atom proto) 
+{
     int n;
     Atom *protocols;
     bool exists = false;
@@ -133,21 +120,21 @@ sendevent(Client *c, Atom proto) {
     return exists;
 }
 
-Client* nexttiled(Client *c) {
-    
+Client* nexttiled(Client *c) 
+{
     return c.range!"next".find!(a => !a.isfloating && ISVISIBLE(a)).front;
 }
 
-void pop(Client *c) {
-    
+void pop(Client *c) 
+{
     detach(c);
     attach(c);
     focus(c);
     arrange(c.mon);
 }
 
-void setfullscreen(Client *c, bool fullscreen) {
-    
+void setfullscreen(Client *c, bool fullscreen) 
+{
     if(fullscreen) {
         XChangeProperty(AppDisplay.instance().dpy, c.win, netatom[NetWMState], XA_ATOM, 32,
                         PropModeReplace, cast(ubyte*)&netatom[NetWMFullscreen], 1);
@@ -173,369 +160,14 @@ void setfullscreen(Client *c, bool fullscreen) {
     }
 }
 
-
-
-
-
-void movemouse(const Arg *arg) {
-    
-    int x, y, ocx, ocy, nx, ny;
-    Client *c;
-    Monitor *m;
-    XEvent ev;
-    Time lasttime = 0;
-
-    c = selmon.sel;
-    if(!c) {
-        return;
-    }
-    if(c.isfullscreen) /* no support moving fullscreen windows by mouse */
-        return;
-    restack(selmon);
-    ocx = c.x;
-    ocy = c.y;
-    if(XGrabPointer(AppDisplay.instance().dpy,
-                    rootWin,
-                    false,
-                    MOUSEMASK,
-                    GrabModeAsync,
-                    GrabModeAsync,
-                    None,
-                    cursor[CurMove].cursor,
-                    CurrentTime) != GrabSuccess) {
-        return;
-    }
-    if(!getrootptr(&x, &y)) {
-        return;
-    }
-    do {
-        XMaskEvent(AppDisplay.instance().dpy, MOUSEMASK|ExposureMask|SubstructureRedirectMask, &ev);
-        switch(ev.type) {
-            case ConfigureRequest:
-            case Expose:
-            case MapRequest:
-                handler[ev.type](&ev);
-                break;
-            case MotionNotify:
-                if ((ev.xmotion.time - lasttime) <= (1000 / 60))
-                    continue;
-                lasttime = ev.xmotion.time;
-
-                nx = ocx + (ev.xmotion.x - x);
-                ny = ocy + (ev.xmotion.y - y);
-                if(nx >= selmon.wx && nx <= selmon.wx + selmon.ww
-                        && ny >= selmon.wy && ny <= selmon.wy + selmon.wh) {
-                    if(abs(selmon.wx - nx) < snap)
-                        nx = selmon.wx;
-                    else if(abs((selmon.wx + selmon.ww) - (nx + WIDTH(c))) < snap)
-                        nx = selmon.wx + selmon.ww - WIDTH(c);
-                    if(abs(selmon.wy - ny) < snap)
-                        ny = selmon.wy;
-                    else if(abs((selmon.wy + selmon.wh) - (ny + HEIGHT(c))) < snap)
-                        ny = selmon.wy + selmon.wh - HEIGHT(c);
-                    if(!c.isfloating && selmon.lt[selmon.sellt].arrange
-                            && (abs(nx - c.x) > snap || abs(ny - c.y) > snap))
-                        togglefloating(null);
-                }
-                if(!selmon.lt[selmon.sellt].arrange || c.isfloating)
-                    resize(c, nx, ny, c.w, c.h, true);
-                break;
-            default :
-                break;
-        }
-    } while(ev.type != ButtonRelease);
-    XUngrabPointer(AppDisplay.instance().dpy, CurrentTime);
-    if((m = recttomon(c.x, c.y, c.w, c.h)) != selmon) {
-        sendmon(c, m);
-        selmon = m;
-        focus(null);
-    }
-}
-
-
-
-void resizemouse(const Arg *arg) {
-    
-    int ocx, ocy, nw, nh;
-    Client *c;
-    Monitor *m;
-    XEvent ev;
-    Time lasttime = 0;
-
-    c = selmon.sel;
-    if(!c) {
-        return;
-    }
-
-    if(c.isfullscreen) /* no support resizing fullscreen windows by mouse */
-        return;
-
-    restack(selmon);
-    ocx = c.x;
-    ocy = c.y;
-
-    if(XGrabPointer(AppDisplay.instance().dpy, rootWin, false, MOUSEMASK, GrabModeAsync, GrabModeAsync,
-                    None, cursor[CurResize].cursor, CurrentTime) != GrabSuccess)
-        return;
-    
-    XWarpPointer(AppDisplay.instance().dpy, None, c.win, 0, 0, 0, 0, c.w + c.bw - 1, c.h + c.bw - 1);
-    do {
-        XMaskEvent(AppDisplay.instance().dpy, MOUSEMASK|ExposureMask|SubstructureRedirectMask, &ev);
-        switch(ev.type) {
-            case ConfigureRequest:
-            case Expose:
-            case MapRequest:
-                handler[ev.type](&ev);
-                break;
-            case MotionNotify:
-                if ((ev.xmotion.time - lasttime) <= (1000 / 60))
-                    continue;
-                lasttime = ev.xmotion.time;
-
-                nw = max(ev.xmotion.x - ocx - 2 * c.bw + 1, 1);
-                nh = max(ev.xmotion.y - ocy - 2 * c.bw + 1, 1);
-                if(c.mon.wx + nw >= selmon.wx && c.mon.wx + nw <= selmon.wx + selmon.ww
-                        && c.mon.wy + nh >= selmon.wy && c.mon.wy + nh <= selmon.wy + selmon.wh) {
-                    if(!c.isfloating && selmon.lt[selmon.sellt].arrange
-                            && (abs(nw - c.w) > snap || abs(nh - c.h) > snap))
-                        togglefloating(null);
-                }
-                if(!selmon.lt[selmon.sellt].arrange || c.isfloating)
-                    resize(c, c.x, c.y, nw, nh, true);
-                break;
-            default :
-                break;
-        }
-    } while(ev.type != ButtonRelease);
-    XWarpPointer(AppDisplay.instance().dpy, None, c.win, 0, 0, 0, 0, c.w + c.bw - 1, c.h + c.bw - 1);
-    XUngrabPointer(AppDisplay.instance().dpy, CurrentTime);
-    while(XCheckMaskEvent(AppDisplay.instance().dpy, EnterWindowMask, &ev)) {}
-    m = recttomon(c.x, c.y, c.w, c.h);
-    if(m != selmon) {
-        sendmon(c, m);
-        selmon = m;
-        focus(null);
-    }
-}
-
-
-void configurenotify(XEvent *e) {
-    
-    XConfigureEvent *ev = &e.xconfigure;
-    bool dirty;
-
-    // TODO: updategeom handling sucks, needs to be simplified
-    if(ev.window == rootWin) {
-        dirty = (sw != ev.width || sh != ev.height);
-        sw = ev.width;
-        sh = ev.height;
-        if(updategeom() || dirty) {
-            drw.resize(sw, bh);
-            updatebars();
-            foreach(m; mons.range) {
-                XMoveResizeWindow(AppDisplay.instance().dpy, m.barwin, m.wx, m.by, m.ww, bh);
-            }
-            focus(null);
-            arrange(null);
-        }
-    }
-}
-
-void configurerequest(XEvent *e) {
-    
-    Client *c;
-    Monitor *m;
-    XConfigureRequestEvent *ev = &e.xconfigurerequest;
-    XWindowChanges wc;
-    c = wintoclient(ev.window);
-    if(c) {
-        if(ev.value_mask & CWBorderWidth) {
-            c.bw = ev.border_width;
-        } else if(c.isfloating || !selmon.lt[selmon.sellt].arrange) {
-            m = c.mon;
-            if(ev.value_mask & CWX) {
-                c.oldx = c.x;
-                c.x = m.mx + ev.x;
-            }
-            if(ev.value_mask & CWY) {
-                c.oldy = c.y;
-                c.y = m.my + ev.y;
-            }
-            if(ev.value_mask & CWWidth) {
-                c.oldw = c.w;
-                c.w = ev.width;
-            }
-            if(ev.value_mask & CWHeight) {
-                c.oldh = c.h;
-                c.h = ev.height;
-            }
-            if((c.x + c.w) > m.mx + m.mw && c.isfloating)
-                c.x = m.mx + (m.mw / 2 - WIDTH(c) / 2); /* center in x direction */
-            if((c.y + c.h) > m.my + m.mh && c.isfloating)
-                c.y = m.my + (m.mh / 2 - HEIGHT(c) / 2); /* center in y direction */
-            if((ev.value_mask & (CWX|CWY)) && !(ev.value_mask & (CWWidth|CWHeight)))
-                configure(c);
-            if(ISVISIBLE(c))
-                XMoveResizeWindow(AppDisplay.instance().dpy, c.win, c.x, c.y, c.w, c.h);
-        } else {
-            configure(c);
-        }
-    } else {
-        wc.x = ev.x;
-        wc.y = ev.y;
-        wc.width = ev.width;
-        wc.height = ev.height;
-        wc.border_width = ev.border_width;
-        wc.sibling = ev.above;
-        wc.stack_mode = ev.detail;
-
-        // HACK to fix the slowdown XError issue. value_mask recieved is 36 but needs to be 12
-        // 36 ==> b2:width, b5:sibling
-        // 12 ==> b2:width, b3:height
-        ev.value_mask = 12;
-        XConfigureWindow(AppDisplay.instance().dpy, ev.window, ev.value_mask, &wc);
-    }
-    XSync(AppDisplay.instance().dpy, false);
-}
-
-void destroynotify(XEvent *e) {
-    
-    Client *c;
-    XDestroyWindowEvent *ev = &e.xdestroywindow;
-
-    c = wintoclient(ev.window);
-    if(c !is null) {
-        unmanage(c, true);
-    }
-}
-
-
-void enternotify(XEvent *e) {
-    
-    Client *c;
-    Monitor *m;
-    XCrossingEvent *ev = &e.xcrossing;
-
-    if((ev.mode != NotifyNormal || ev.detail == NotifyInferior) && ev.window != rootWin)
-        return;
-    c = wintoclient(ev.window);
-    m = c ? c.mon : wintomon(ev.window);
-    if(m != selmon) {
-        unfocus(selmon.sel, true);
-        selmon = m;
-    } else if(!c || c == selmon.sel) {
-        return;
-    }
-    focus(c);
-}
-
-void mappingnotify(XEvent *e) {
-    
-    XMappingEvent *ev = &e.xmapping;
-
-    XRefreshKeyboardMapping(ev);
-    if(ev.request == MappingKeyboard)
-        keyboardEventHandler.grabkeys();
-}
-
-void maprequest(XEvent *e) {
-    
-    static XWindowAttributes wa;
-    XMapRequestEvent *ev = &e.xmaprequest;
-
-    if(!XGetWindowAttributes(AppDisplay.instance().dpy, ev.window, &wa))
-        return;
-    if(wa.override_redirect)
-        return;
-    if(!wintoclient(ev.window))
-        manage(ev.window, &wa);
-}
-
-
-void propertynotify(XEvent *e) 
+void resize(Client *c, int x, int y, int w, int h, bool interact) 
 {
-    
-    Client *c;
-    Window trans;
-    XPropertyEvent *ev = &e.xproperty;
-    if((ev.window == rootWin) && (ev.atom == XA_WM_NAME))
-        updatestatus();
-    else if(ev.state == PropertyDelete)
-        return; /* ignore */
-    else {
-        c = wintoclient(ev.window);
-        if(c) {
-            switch(ev.atom) {
-                default:
-                    break;
-                case XA_WM_TRANSIENT_FOR:
-                    if(!c.isfloating && (XGetTransientForHint(AppDisplay.instance().dpy, c.win, &trans))) {
-                        c.isfloating = (wintoclient(trans) !is null);
-                        if(c.isfloating) {
-                            arrange(c.mon);
-                        }
-                    }
-                    break;
-                case XA_WM_NORMAL_HINTS:
-                    updatesizehints(c);
-                    break;
-                case XA_WM_HINTS:
-                    updatewmhints(c);
-                    drawbars();
-                    break;
-            }
-
-            if(ev.atom == XA_WM_NAME || ev.atom == netatom[NetWMName]) {
-                updatetitle(c);
-                if(c == c.mon.sel)
-                    drawbar(c.mon);
-            }
-
-            if(ev.atom == netatom[NetWMWindowType])
-                updatewindowtype(c);
-        }
-    }
-}
-
-
-void unmapnotify(XEvent *e) 
-{
-    
-    Client *c;
-    XUnmapEvent *ev = &e.xunmap;
-
-    c=  wintoclient(ev.window);
-    if(c) {
-        if(ev.send_event)
-            setclientstate(c, WithdrawnState);
-        else
-            unmanage(c, false);
-    }
-}
-
-Monitor* recttomon(int x, int y, int w, int h) {
-    
-    auto r = selmon;
-    int a, area = 0;
-
-    foreach(m; mons.range) {
-        a = INTERSECT(x, y, w, h, m);
-        if(a > area) {
-            area = a;
-            r = m;
-        }
-    }
-    return r;
-}
-
-void resize(Client *c, int x, int y, int w, int h, bool interact) {
-    
     if(applysizehints(c, x, y, w, h, interact))
         resizeclient(c, x, y, w, h);
 }
 
-void resizeclient(Client *c, int x, int y, int w, int h) {
-    
+void resizeclient(Client *c, int x, int y, int w, int h) 
+{
     XWindowChanges wc;
 
     c.oldx = c.x;
@@ -552,8 +184,8 @@ void resizeclient(Client *c, int x, int y, int w, int h) {
     XSync(AppDisplay.instance().dpy, false);
 }
 
-void sendmon(Client *c, Monitor *m) {
-    
+void sendmon(Client *c, Monitor *m) 
+{
     if(c.mon == m)
         return;
     unfocus(c, true);
@@ -568,8 +200,8 @@ void sendmon(Client *c, Monitor *m) {
 }
 
 
-bool applysizehints(Client *c, ref int x, ref int y, ref int w, ref int h, bool interact) {
-    
+bool applysizehints(Client *c, ref int x, ref int y, ref int w, ref int h, bool interact) 
+{
     bool baseismin;
     Monitor *m = c.mon;
 
@@ -635,25 +267,8 @@ import std.math :
     return x != c.x || y != c.y || w != c.w || h != c.h;
 }
 
-
-void motionnotify(XEvent *e) {
-    
-    static Monitor *mon = null;
-    Monitor *m;
-    XMotionEvent *ev = &e.xmotion;
-
-    if(ev.window != rootWin)
-        return;
-    if((m = recttomon(ev.x_root, ev.y_root, 1, 1)) != mon && mon) {
-        unfocus(selmon.sel, true);
-        selmon = m;
-        focus(null);
-    }
-    mon = m;
-}
-
-void clientmessage(XEvent *e) {
-    
+void clientmessage(XEvent *e) 
+{
     XClientMessageEvent *cme = &e.xclient;
     Client *c = wintoclient(cme.window);
 
@@ -673,12 +288,8 @@ void clientmessage(XEvent *e) {
     }
 }
 
-
-
-
-
-void togglefloating(const Arg *arg) {
-    
+void togglefloating(const Arg *arg) 
+{
     if(!selmon.sel)
         return;
     if(selmon.sel.isfullscreen) /* no support for fullscreen windows */
@@ -765,7 +376,8 @@ void zoom(const Arg *arg) {
     pop(c);
 }
 
-void setlayout(const Arg *arg) {
+void setlayout(const Arg *arg) 
+{
     if(!arg || !arg.v || arg.v != selmon.lt[selmon.sellt])
         selmon.sellt ^= 1;
     if(arg && arg.v) {
@@ -795,6 +407,7 @@ void killclient(const Arg *arg) {
     
     if(!selmon.sel)
         return;
+
     if(!sendevent(selmon.sel, wmatom[WMDelete])) {
         XGrabServer(AppDisplay.instance().dpy);
         XSetErrorHandler(&xerrordummy);
@@ -825,41 +438,8 @@ void setmfact(const Arg *arg) {
     arrange(selmon);
 }
 
-void cleanup() {
-    
-    auto a = Arg(-1);
-    Layout foo = { "", null };
-
-    view(&a);
-    selmon.lt[selmon.sellt] = &foo;
-    foreach(m; mons.range) {
-        while(m.stack) {
-            unmanage(m.stack, false);
-        }
-    }
-    XUngrabKey(AppDisplay.instance().dpy, AnyKey, AnyModifier, rootWin);
-    while(mons) {
-        cleanupmon(mons);
-    }
-    Cur.free(cursor[CurNormal]);
-    Cur.free(cursor[CurResize]);
-    Cur.free(cursor[CurMove]);
-    Fnt.free(AppDisplay.instance().dpy, fnt);
-    Clr.free(scheme[SchemeNorm].border);
-    Clr.free(scheme[SchemeNorm].bg);
-    Clr.free(scheme[SchemeNorm].fg);
-    Clr.free(scheme[SchemeSel].border);
-    Clr.free(scheme[SchemeSel].bg);
-    Clr.free(scheme[SchemeSel].fg);
-    Drw.free(drw);
-    XSync(AppDisplay.instance().dpy, false);
-    XSetInputFocus(AppDisplay.instance().dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
-    XDeleteProperty(AppDisplay.instance().dpy, rootWin, netatom[NetActiveWindow]);
-}
-
-
-void tile(Monitor *m) {
-    
+void tile(Monitor *m) 
+{
     uint i, n, h, mw, my, ty;
     Client *c;
 
@@ -886,8 +466,8 @@ void tile(Monitor *m) {
     }
 }
 
-void monocle(Monitor *m) {
-    
+void monocle(Monitor *m) 
+{
     uint n = 0;
 
     n = m.clients.range!"next".map!(a=>ISVISIBLE(a)).sum;
@@ -1126,13 +706,6 @@ void focus(Client *c) {
     drawbars();
 }
 
-void focusin(XEvent *e) {  /* there are some broken focus acquiring clients */  
-    XFocusChangeEvent *ev = &e.xfocus;
-    if(selmon.sel && ev.window != selmon.sel.win) {
-        setfocus(selmon.sel);
-    }
-}
-
 void focusmon(const Arg *arg) {
     
     Monitor *m;
@@ -1204,77 +777,10 @@ void unfocus(Client *c, bool setfocus) {
     }
 }
 
-Monitor* wintomon(Window w) 
+
+
+void restack(Monitor *m) 
 {
-    int x, y;
-
-    if(w == rootWin && getrootptr(&x, &y)) {
-        return recttomon(x, y, 1, 1);
-    }
-    auto m = mons.range.find!(mon => mon.barwin == w).front;
-    if(m) {
-        return m;
-    }
-
-    auto c = wintoclient(w);
-    if(c) {
-        return c.mon;
-    }
-    return selmon;
-}
-
-auto makeArg(TIN)(TIN val) {
-    alias T = Unqual!TIN;
-    return Arg(val);
-}
-
-struct Arg {
-    union Vals{
-        int ival;
-        uint uival;
-        float fval;
-        string[] sval;
-        void* vptr;
-    }
-    Vals val;
-    //Variant val;
-    this(TIN)(TIN val) {
-        alias T = Unqual!TIN;
-        static if(isIntegral!T) {
-            this.val.ival = cast(int)(val);
-        } else static if(isFloatingPoint!T) {
-            this.val.fval = cast(float)(val);
-        } else static if(is(TIN == immutable(immutable(char)[])[])) {
-            this.val.sval = cast(string[])val;
-        } else {
-            this.val.vptr = cast(void*)(val);
-        }
-    }
-    @property int i() const {
-        return this.val.ival;
-    }
-    @property void i(int ival) {val.ival = cast(int)(ival);}
-    @property uint ui() const {
-        return this.val.uival;
-    }
-    @property void ui(uint ival) {val.uival = cast(uint)(ival);}
-    @property float f() const {
-        return this.val.fval;
-    }
-    @property void f(float ival) {val.fval = cast(float)(ival);}
-    @property const(string[]) s() const {
-        return this.val.sval;
-    }
-    @property void s(string[] ival) {val.sval = cast(string[])(ival);}
-
-    @property const(void*) v() const {
-        return this.val.vptr;
-    }
-    @property void v(void* ival) {val.vptr = cast(void*)(ival);}
-}
-
-void restack(Monitor *m) {
-    
     XEvent ev;
     XWindowChanges wc;
 
@@ -1296,250 +802,10 @@ void restack(Monitor *m) {
     while(XCheckMaskEvent(AppDisplay.instance().dpy, EnterWindowMask, &ev)) {}
 }
 
-void showhide(Client *c) {
-    
-    if(!c)
-        return;
-    if(ISVISIBLE(c)) { /* show clients top down */
-        XMoveWindow(AppDisplay.instance().dpy, c.win, c.x, c.y);
-        if((!c.mon.lt[c.mon.sellt].arrange || c.isfloating) && !c.isfullscreen)
-            resize(c, c.x, c.y, c.w, c.h, false);
-        showhide(c.snext);
-    } else { /* hide clients bottom up */
-        showhide(c.snext);
-        XMoveWindow(AppDisplay.instance().dpy, c.win, WIDTH(c) * -2, c.y);
-    }
-}
-
-/* layout(s) */
-static immutable float mfact      = 0.55; /* factor of master area size [0.05..0.95] */
-static immutable int nmaster      = 1;    /* number of clients in master area */
-static immutable bool resizehints = true; /* true means respect size hints in tiled resizals */
-
-//###################################################
-// MACROS
-enum BUTTONMASK = ButtonPressMask | ButtonReleaseMask;
-auto CLEANMASK(M)(auto ref in M mask) {
-    return (mask & ~(numlockmask|LockMask) & (ShiftMask|ControlMask|Mod1Mask|Mod2Mask|Mod3Mask|Mod4Mask|Mod5Mask));
-}
-auto INTERSECT(T, M)(T x, T y, T w, T h, M m) {
-    import std.algorithm;
-    return max(0, min(x + w, m.wx + m.ww) - max(x, m.wx)) * max(0, min(y + h, m.wy + m.wh) - max(y, m.wy));
-}
-auto ISVISIBLE(C)(auto ref in C c) pure @safe @nogc nothrow {
-    return c.tags & c.mon.tagset[c.mon.seltags];
-}
-auto LENGTH(X)(auto ref in X x) {
-    return x.length;
-}
-enum MOUSEMASK = ButtonPressMask | ButtonReleaseMask | PointerMotionMask;
-
-auto WIDTH(X)(auto ref in X x) {
-    return x.w + 2 * x.bw;
-}
-auto HEIGHT(X)(auto ref in X x) {
-    return x.h + 2 * x.bw;
-}
-enum TAGMASK = ((1 << tags.length) - 1);
 auto TEXTW(X)(auto ref in X x)
 if(isSomeString!X) {
     return drw.font.getexts_width(x) + drw.font.h;
 }
-
-struct Rule {
-	string klass;
-	string instance;
-	string title;
-	uint tags;
-	bool isfloating;
-	int monitor;
-}
-
-/**
- * Drw provides an interface for working with drawable surfaces.
- */
-struct Drw {
-    uint w, h; /// The width and height of the drawable area
-    Display *dpy; /// The X display
-    int screen; /// The X screen ID
-    Window root; /// The root window for this drawable
-    Drawable drawable; /// The X drawable encapsulated by this.
-    XGC gc; /// The X graphic context
-    ClrScheme *scheme; /// The colour scheme to use
-    Fnt *font; /// The X font to use for rendering text.
-
-    /**
-     * Ctor to initialise the draw object
-     * Params:
-     *  dpy=        X display to render with.
-     *  screen=     X screen id
-     *  root=       Root X window for this drawable
-     *  w=          Width of the drawable
-     *  h=          Height of the drawable
-     * Example:
-     * ---
-     * drw = new Drw(AppDisplay.instance().dpy, screen, root, sw, sh);
-     * ---
-     */
-    this(Display* dpy, int screen, Window root, uint w, uint h) {
-        this.dpy = dpy;
-        this.screen = screen;
-        this.root = root;
-        this.w = w;
-        this.h = h;
-        this.drawable = XCreatePixmap(AppDisplay.instance().dpy, root, w, h, DefaultDepth(AppDisplay.instance().dpy, screen));
-        this.gc = XCreateGC(AppDisplay.instance().dpy, root, 0, null);
-        XSetLineAttributes(AppDisplay.instance().dpy, this.gc, 1, LineSolid, CapButt, JoinMiter);
-
-    }
-    /**
-     * Resize the drawable to a new width and height
-     * Params:
-     *  w=      Width
-     *  h=      Height
-     * Example:
-     * ---
-     * drw.resize(100, 100);
-     * ---
-     */
-    void resize(uint w, uint h) {
-        this.w = w;
-        this.h = h;
-        if(this.drawable != 0) {
-            XFreePixmap(this.dpy, this.drawable);
-        }
-        this.drawable = XCreatePixmap(this.dpy, this.root, w, h, DefaultDepth(this.dpy, this.screen));
-    }
-    /**
-     * Destroy the X resources used by this drawable.
-     */
-    void destroy() {
-        XFreePixmap(this.dpy, this.drawable);
-        XFreeGC(this.dpy, this.gc);
-    }
-    /**
-     * Set the font to use for rendering.
-     * Params:
-     *  font=       Pointer to the font to use.
-     */
-    void setfont(Fnt *font) {
-        this.font = font;
-    }
-    /**
-     * Set the scheme for this drawable
-     * Params:
-     *  scheme=     Pointer to the scheme to use
-     */
-    void setscheme(ClrScheme *scheme) {
-        if(scheme)
-            this.scheme = scheme;
-    }
-    /**
-     * Draw a rectangle to the X display using the current settings. Note that
-     * filled and empty are not mutually exclusive.
-     * Params:
-     *  x=      Left edge of the rect
-     *  y=      Top edge of the rect
-     *  w=      Width of the rect
-     *  h=      Height of the rect
-     *  filled= If true the rect will be filled
-     *  empty=  If true the rect will be empty
-     *  invert= If true the colours will be inverted.
-     * Example:
-     * ---
-     * drw.rect(10, 10, 90, 90, true, false, false);
-     * ---
-     */
-    void rect(int x, int y, uint w, uint h, int filled, int empty, int invert) {
-        int dx;
-
-        if(!this.font || !this.scheme)
-            return;
-        XSetForeground(this.dpy, this.gc, invert ? this.scheme.bg.rgb : this.scheme.fg.rgb);
-        dx = (this.font.ascent + this.font.descent + 2) / 4;
-        if(filled)
-            XFillRectangle(this.dpy, this.drawable, this.gc, x+1, y+1, dx+1, dx+1);
-        else if(empty)
-            XDrawRectangle(this.dpy, this.drawable, this.gc, x+1, y+1, dx, dx);
-    }
-
-    /**
-     * Render some text to the display using the current font.
-     * Params:
-     *  x=      Left edge of the text area
-     *  y=      Top of the text area
-     *  w=      Width of the text area
-     *  h=      Height of the text area
-     *  text=   Text to write
-     *  invert= true the text bg/fg coluors will be inverted
-     * Example:
-     * ---
-     * drw.text(10, 10, 100, 100, "this is a test", false);
-     * ---
-     */
-    void text(int x, int y, uint w, uint h, in string text, int invert) {
-        char[256] buf;
-        Extnts tex;
-
-        if(!this.scheme) {
-            return;
-        }
-        XSetForeground(this.dpy, this.gc, invert ? this.scheme.fg.rgb : this.scheme.bg.rgb);
-        XFillRectangle(this.dpy, this.drawable, this.gc, x, y, w, h);
-        if(!text || !this.font) {
-            return;
-        }
-        this.font.getexts(text, &tex);
-        auto th = this.font.ascent + this.font.descent;
-        auto ty = y + (h / 2) - (th / 2) + this.font.ascent;
-        auto tx = x + (h / 2);
-        /* shorten text if necessary */
-        auto len = min(text.length, buf.sizeof);        
-        for(; len && (tex.w > w - tex.h || w < tex.h); len--) {
-            this.font.getexts(text[0..len], &tex);
-        }
-        if(!len) {
-            return;
-        }
-        memcpy(buf.ptr, text.ptr, len);
-
-        XSetForeground(this.dpy, this.gc, invert ? this.scheme.bg.rgb : this.scheme.fg.rgb);
-        if(this.font.set)
-            XmbDrawString(this.dpy, this.drawable, this.font.set, this.gc, tx, ty, buf.ptr, cast(uint)(len));
-        else
-            XDrawString(this.dpy, this.drawable, this.gc, tx, ty, buf.ptr, cast(int)len);
-    }
-
-    /**
-     * Copy the drawable area to a window.
-     * Params:
-     *  win= Destination to copy to.
-     *  x=      Left edge of area to copy
-     *  y=      Top of area to copy
-     *  w=      Width of area to copy
-     *  h=      Height of area to copy
-     * Example:
-     * ---
-     * drw.map(win, 10, 10, 100, 100);
-     * ---
-     */
-    void map(Window win, int x, int y, uint w, uint h) {
-        XCopyArea(this.dpy, this.drawable, win, this.gc, x, y, w, h, x, y);
-        XSync(this.dpy, false);
-    }
-
-    /**
-     * Release the GC memory used for the Drw object
-     * Params:
-     *  drw=        Drw object to release
-     */
-    static void free(Drw* drw) {
-        drw.destroy;
-        DGC.free(drw);
-    }
-
-}
-
 
 void cleanupmon(Monitor *mon) {
     if(mon && mon == mons) {
@@ -1569,45 +835,10 @@ void clearurgent(Client *c) {
     XFree(wmh);
 }
 
-Monitor* dirtomon(int dir) {
-    
-    Monitor *m = null;
 
-    if(dir > 0) {
-        m = selmon.next;
-        if(m is null) {
-            m = mons;
-        }
-    } else if(selmon == mons) {
-        m = mons.range.find!"a.next is null".front;
-    } else {
-        m = mons.range.find!(a => a.next == selmon).front;
-    }
-    return m;
-}
 
-Monitor* createmon() {
-    
-    Monitor* m = new Monitor();
-
-    import std.string;
-    if(m is null) {
-        die("fatal: could not malloc() %s bytes\n", Monitor.sizeof);
-    }
-    m.tagset[0] = m.tagset[1] = 1;
-    m.mfact = mfact;
-    m.nmaster = nmaster;
-    m.showbar = showbar;
-    m.topbar = topbar;
-    m.lt[0] = &layouts[0];
-    m.lt[1] = &layouts[1 % LENGTH(layouts)];
-    m.ltsymbol = layouts[0].symbol;
-    //strncpy(m.ltsymbol.ptr, layouts[0].symbol, m.ltsymbol.sizeof);
-    return m;
-}
-
-void detachstack(Client *c) {
-    
+void detachstack(Client *c) 
+{
     Client **tc;
 
 
@@ -1620,25 +851,10 @@ void detachstack(Client *c) {
     }
 }
 
-void detach(Client *c) {
-    
+void detach(Client *c) 
+{
     Client **tc;
     for(tc = &c.mon.clients; *tc && *tc != c; tc = &(*tc).next) {}
     *tc = c.next;
 }
 
-static string stext;
-
-void expose(XEvent *e) {
-    
-
-    Monitor *m;
-    XExposeEvent *ev = &e.xexpose;
-
-    if(ev.count == 0) {
-        m = wintomon(ev.window);
-        if(m !is null) {
-            drawbar(m);
-        }
-    }
-}

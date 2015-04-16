@@ -36,9 +36,9 @@ import helper.x11;
 import gui.cursor;
 import gui.font;
 import gui.bar;
-import gui.layout;
-
-static uint numlockmask = 0;
+import theme.layout;
+import theme.manager;
+import monitor;
 
 static Drw *drw;
 static Fnt *fnt;
@@ -51,80 +51,12 @@ static void function(XEvent*)[LASTEvent] handler;
 static immutable string VERSION = "0.1 Cobox";
 
 
-bool applysizehints(Client *c, ref int x, ref int y, ref int w, ref int h, bool interact) {
-    
-    bool baseismin;
-    Monitor *m = c.mon;
-
-    /* set minimum possible */
-    w = max(1, w);
-    h = max(1, h);
-    if(interact) {
-        if(x > sw)
-            x = sw - WIDTH(c);
-        if(y > sh)
-            y = sh - HEIGHT(c);
-        if(x + w + 2 * c.bw < 0)
-            x = 0;
-        if(y + h + 2 * c.bw < 0)
-            y = 0;
-    } else {
-        if(x >= m.wx + m.ww)
-            x = m.wx + m.ww - WIDTH(c);
-        if(y >= m.wy + m.wh)
-            y = m.wy + m.wh - HEIGHT(c);
-        if(x + w + 2 * c.bw <= m.wx)
-            x = m.wx;
-        if(y + h + 2 * c.bw <= m.wy)
-            y = m.wy;
-    }
-    if(h < bh)
-        h = bh;
-    if(w < bh)
-        w = bh;
-    if(resizehints || c.isfloating || !c.mon.lt[c.mon.sellt].arrange) {
-        /* see last two sentences in ICCCM 4.1.2.3 */
-        baseismin = c.basew == c.minw && c.baseh == c.minh;
-        if(!baseismin) { /* temporarily remove base dimensions */
-            w -= c.basew;
-            h -= c.baseh;
-        }
-import std.math :
-        nearbyint;
-        /* adjust for aspect limits */
-        if(c.mina > 0 && c.maxa > 0) {
-            if(c.maxa < float(w) / h)
-                w = cast(int)(h * c.maxa + 0.5);
-            else if(c.mina < float(h) / w)
-                h = cast(int)(w * c.mina + 0.5);
-        }
-        if(baseismin) { /* increment calculation requires this */
-            w -= c.basew;
-            h -= c.baseh;
-        }
-        /* adjust for increment value */
-        if(c.incw)
-            w -= w % c.incw;
-        if(c.inch)
-            h -= h % c.inch;
-        /* restore base dimensions */
-        w = max(w + c.basew, c.minw);
-        h = max(h + c.baseh, c.minh);
-        if(c.maxw)
-            w = min(w, c.maxw);
-        if(c.maxh)
-            h = min(h, c.maxh);
-    }
-    return x != c.x || y != c.y || w != c.w || h != c.h;
-}
-
-
-void arrange(Monitor *m) {
-    
+void arrange(Monitor *m) 
+{
     if(m) {
-        showhide(m.stack);
+        windowManager.showhide(m.stack);
     } else foreach(m; mons.range) {
-        showhide(m.stack);
+        windowManager.showhide(m.stack);
     }
     if(m) {
         arrangemon(m);
@@ -153,9 +85,6 @@ void attachstack(Client *c) {
     c.snext = c.mon.stack;
     c.mon.stack = c;
 }
-
-
-
 
 long getstate(Window w) 
 {
@@ -331,13 +260,13 @@ void quit(const Arg *arg)
 EventHandler eventManager;
 KeyboardEvents keyboardEventHandler;
 MouseEvents mouseEventHandler;
+WindowManager windowManager;
 
 static Atom[WMLast] wmatom;
 static Atom[NetLast] netatom;
 
 class Kernel
 {
-    WindowManager windowManager;
 
     this()
     {
@@ -479,9 +408,41 @@ class Kernel
         return 0;
     }
 
+    void cleanup() 
+    {
+        auto a = Arg(-1);
+        Layout foo = { "", null };
+
+        view(&a);
+        selmon.lt[selmon.sellt] = &foo;
+        foreach(m; mons.range) {
+            while(m.stack) {
+                unmanage(m.stack, false);
+            }
+        }
+        XUngrabKey(AppDisplay.instance().dpy, AnyKey, AnyModifier, rootWin);
+        while(mons) {
+            cleanupmon(mons);
+        }
+        Cur.free(cursor[CurNormal]);
+        Cur.free(cursor[CurResize]);
+        Cur.free(cursor[CurMove]);
+        Fnt.free(AppDisplay.instance().dpy, fnt);
+        Clr.free(scheme[SchemeNorm].border);
+        Clr.free(scheme[SchemeNorm].bg);
+        Clr.free(scheme[SchemeNorm].fg);
+        Clr.free(scheme[SchemeSel].border);
+        Clr.free(scheme[SchemeSel].bg);
+        Clr.free(scheme[SchemeSel].fg);
+        Drw.free(drw);
+        XSync(AppDisplay.instance().dpy, false);
+        XSetInputFocus(AppDisplay.instance().dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
+        XDeleteProperty(AppDisplay.instance().dpy, rootWin, netatom[NetActiveWindow]);
+    }
+
     void close()
     {
-        cleanup();
+        this.cleanup();
         XCloseDisplay(AppDisplay.instance().dpy);
     }
 }

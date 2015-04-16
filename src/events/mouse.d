@@ -7,13 +7,21 @@ import old;
 import config;
 import types;
 import cboxapp;
+import gui.cursor;
+import monitor;
 
 import deimos.X11.X;
 import deimos.X11.Xlib;
 import deimos.X11.keysymdef;
 import deimos.X11.Xutil;
 import deimos.X11.Xatom;
+
 import std.stdio;
+import std.math;
+import std.algorithm;
+
+enum BUTTONMASK = ButtonPressMask | ButtonReleaseMask;
+enum MOUSEMASK = ButtonPressMask | ButtonReleaseMask | PointerMotionMask;
 
 struct Button 
 {
@@ -151,4 +159,143 @@ class MouseEvents : EventInterface
 	        }
 	    }
 	}
+}
+
+void movemouse(const Arg *arg) 
+{
+    int x, y, ocx, ocy, nx, ny;
+    Client *c;
+    Monitor *m;
+    XEvent ev;
+    Time lasttime = 0;
+
+    c = selmon.sel;
+    if(!c) {
+        return;
+    }
+    if(c.isfullscreen) /* no support moving fullscreen windows by mouse */
+        return;
+    restack(selmon);
+    ocx = c.x;
+    ocy = c.y;
+    if(XGrabPointer(AppDisplay.instance().dpy,
+                    rootWin,
+                    false,
+                    MOUSEMASK,
+                    GrabModeAsync,
+                    GrabModeAsync,
+                    None,
+                    cursor[CurMove].cursor,
+                    CurrentTime) != GrabSuccess) {
+        return;
+    }
+    if(!getrootptr(&x, &y)) {
+        return;
+    }
+    do {
+        XMaskEvent(AppDisplay.instance().dpy, MOUSEMASK|ExposureMask|SubstructureRedirectMask, &ev);
+        switch(ev.type) {
+            case ConfigureRequest:
+            case Expose:
+            case MapRequest:
+                handler[ev.type](&ev);
+                break;
+            case MotionNotify:
+                if ((ev.xmotion.time - lasttime) <= (1000 / 60))
+                    continue;
+                lasttime = ev.xmotion.time;
+
+                nx = ocx + (ev.xmotion.x - x);
+                ny = ocy + (ev.xmotion.y - y);
+                if(nx >= selmon.wx && nx <= selmon.wx + selmon.ww
+                        && ny >= selmon.wy && ny <= selmon.wy + selmon.wh) {
+                    if(abs(selmon.wx - nx) < snap)
+                        nx = selmon.wx;
+                    else if(abs((selmon.wx + selmon.ww) - (nx + WIDTH(c))) < snap)
+                        nx = selmon.wx + selmon.ww - WIDTH(c);
+                    if(abs(selmon.wy - ny) < snap)
+                        ny = selmon.wy;
+                    else if(abs((selmon.wy + selmon.wh) - (ny + HEIGHT(c))) < snap)
+                        ny = selmon.wy + selmon.wh - HEIGHT(c);
+                    if(!c.isfloating && selmon.lt[selmon.sellt].arrange
+                            && (abs(nx - c.x) > snap || abs(ny - c.y) > snap))
+                        togglefloating(null);
+                }
+                if(!selmon.lt[selmon.sellt].arrange || c.isfloating)
+                    resize(c, nx, ny, c.w, c.h, true);
+                break;
+            default :
+                break;
+        }
+    } while(ev.type != ButtonRelease);
+    XUngrabPointer(AppDisplay.instance().dpy, CurrentTime);
+    if((m = recttomon(c.x, c.y, c.w, c.h)) != selmon) {
+        sendmon(c, m);
+        selmon = m;
+        focus(null);
+    }
+}
+
+void resizemouse(const Arg *arg) 
+{
+    int ocx, ocy, nw, nh;
+    Client *c;
+    Monitor *m;
+    XEvent ev;
+    Time lasttime = 0;
+
+    c = selmon.sel;
+    if(!c) {
+        return;
+    }
+
+    if(c.isfullscreen) /* no support resizing fullscreen windows by mouse */
+        return;
+
+    restack(selmon);
+    ocx = c.x;
+    ocy = c.y;
+
+    if(XGrabPointer(AppDisplay.instance().dpy, rootWin, false, MOUSEMASK, GrabModeAsync, GrabModeAsync,
+                    None, cursor[CurResize].cursor, CurrentTime) != GrabSuccess)
+        return;
+    
+    XWarpPointer(AppDisplay.instance().dpy, None, c.win, 0, 0, 0, 0, c.w + c.bw - 1, c.h + c.bw - 1);
+    do {
+        XMaskEvent(AppDisplay.instance().dpy, MOUSEMASK|ExposureMask|SubstructureRedirectMask, &ev);
+        switch(ev.type) {
+            case ConfigureRequest:
+            case Expose:
+            case MapRequest:
+                handler[ev.type](&ev);
+                break;
+            case MotionNotify:
+                if ((ev.xmotion.time - lasttime) <= (1000 / 60))
+                    continue;
+                lasttime = ev.xmotion.time;
+
+                nw = max(ev.xmotion.x - ocx - 2 * c.bw + 1, 1);
+                nh = max(ev.xmotion.y - ocy - 2 * c.bw + 1, 1);
+                if(c.mon.wx + nw >= selmon.wx && c.mon.wx + nw <= selmon.wx + selmon.ww
+                        && c.mon.wy + nh >= selmon.wy && c.mon.wy + nh <= selmon.wy + selmon.wh) {
+                    if(!c.isfloating && selmon.lt[selmon.sellt].arrange
+                            && (abs(nw - c.w) > snap || abs(nh - c.h) > snap))
+                        togglefloating(null);
+                }
+                if(!selmon.lt[selmon.sellt].arrange || c.isfloating)
+                    resize(c, c.x, c.y, nw, nh, true);
+                break;
+            default :
+                break;
+        }
+    } while(ev.type != ButtonRelease);
+    XWarpPointer(AppDisplay.instance().dpy, None, c.win, 0, 0, 0, 0, c.w + c.bw - 1, c.h + c.bw - 1);
+    XUngrabPointer(AppDisplay.instance().dpy, CurrentTime);
+    while(XCheckMaskEvent(AppDisplay.instance().dpy, EnterWindowMask, &ev)) {}
+    m = recttomon(c.x, c.y, c.w, c.h);
+    if(m != selmon) {
+        sendmon(c, m);
+        selmon = m;
+        focus(null);
+    }
 }
