@@ -9,15 +9,15 @@ import kernel;
 import old;
 import utils;
 import legacy;
+import monitor;
+import helper.x11;
 
 import std.algorithm;
-
 import deimos.X11.X;
 import deimos.X11.Xlib;
 import deimos.X11.keysymdef;
 import deimos.X11.Xutil;
 import deimos.X11.Xatom;
-import helper.x11;
 import std.algorithm;
 
 enum { 
@@ -156,7 +156,6 @@ class WindowManager
 
 	void manage(Window w, XWindowAttributes *wa) 
 	{
-	    
 	    Client *c, t = null;
 	    Window trans = None;
 	    XWindowChanges wc;
@@ -234,19 +233,59 @@ class WindowManager
 	    XMapWindow(AppDisplay.instance().dpy, c.win);
 	    focus(null);
 	}
+
+
+	Atom getatomprop(Client *c, Atom prop) 
+	{
+	    int di;
+	    ulong dl;
+	    ubyte* p = null;
+	    Atom da, atom = None;
+
+	    if(XGetWindowProperty(AppDisplay.instance().dpy, c.win, prop, 0L, atom.sizeof, false, XA_ATOM,
+	                          &da, &di, &dl, &dl, &p) == XErrorCode.Success && p) {
+	        atom = *cast(Atom *)(p);
+	        XFree(p);
+	    }
+	    return atom;
+	}
+
+	void updatewindowtype(Client *c) 
+	{
+	    
+	    Atom state = getatomprop(c, netatom[NetWMState]);
+	    Atom wtype = getatomprop(c, netatom[NetWMWindowType]);
+
+	    if(state == netatom[NetWMFullscreen])
+	        setfullscreen(c, true);
+	    if(wtype == netatom[NetWMWindowTypeDialog])
+	        c.isfloating = true;
+	}
 }
 
-Atom getatomprop(Client *c, Atom prop) 
+void unmanage(Client *c, bool destroyed) 
 {
-    int di;
-    ulong dl;
-    ubyte* p = null;
-    Atom da, atom = None;
+    Monitor *m = c.mon;
+    XWindowChanges wc;
 
-    if(XGetWindowProperty(AppDisplay.instance().dpy, c.win, prop, 0L, atom.sizeof, false, XA_ATOM,
-                          &da, &di, &dl, &dl, &p) == XErrorCode.Success && p) {
-        atom = *cast(Atom *)(p);
-        XFree(p);
+    /* The server grab construct avoids race conditions. */
+    detach(c);
+    detachstack(c);
+    if(!destroyed) {
+        wc.border_width = c.oldbw;
+        XGrabServer(AppDisplay.instance().dpy);
+        XSetErrorHandler(&xerrordummy);
+        XConfigureWindow(AppDisplay.instance().dpy, c.win, CWBorderWidth, &wc); /* restore border */
+        XUngrabButton(AppDisplay.instance().dpy, AnyButton, AnyModifier, c.win);
+        setclientstate(c, WithdrawnState);
+        XSync(AppDisplay.instance().dpy, false);
+        XSetErrorHandler(&xerror);
+        XUngrabServer(AppDisplay.instance().dpy);
     }
-    return atom;
+    DGC.free(c);
+    focus(null);
+    updateclientlist();
+    arrange(m);
 }
+
+

@@ -571,19 +571,6 @@ bool updategeom() {
     return dirty;
 }
 
-
-
-void updatewindowtype(Client *c) {
-    
-    Atom state = getatomprop(c, netatom[NetWMState]);
-    Atom wtype = getatomprop(c, netatom[NetWMWindowType]);
-
-    if(state == netatom[NetWMFullscreen])
-        setfullscreen(c, true);
-    if(wtype == netatom[NetWMWindowTypeDialog])
-        c.isfloating = true;
-}
-
 void updatewmhints(Client *c) {
     
     XWMHints *wmh;
@@ -807,7 +794,8 @@ if(isSomeString!X) {
     return drw.font.getexts_width(x) + drw.font.h;
 }
 
-void cleanupmon(Monitor *mon) {
+void cleanupmon(Monitor *mon) 
+{
     if(mon && mon == mons) {
         mons = mons.next;
     } else {

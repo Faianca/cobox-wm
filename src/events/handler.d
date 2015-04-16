@@ -68,7 +68,7 @@ void maprequest(XEvent *e)
     if(wa.override_redirect)
         return;
     if(!wintoclient(ev.window))
-        manage(ev.window, &wa);
+        windowManager.manage(ev.window, &wa);
 }
 
 void propertynotify(XEvent *e) 
@@ -111,7 +111,7 @@ void propertynotify(XEvent *e)
             }
 
             if(ev.atom == netatom[NetWMWindowType])
-                updatewindowtype(c);
+                windowManager.updatewindowtype(c);
         }
     }
 }

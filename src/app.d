@@ -5,6 +5,7 @@ import cboxapp;
 import std.stdio;
 import deimos.X11.X;
 import deimos.X11.Xlib;
+import std.datetime;
 
 int main(string[] args)
 {
@@ -23,6 +24,10 @@ int main(string[] args)
         stderr.writeln("cbox: cannot open display");
         return -1;
     }
+
+    /*auto st1 = Clock.currTime().toISOExtString();
+    XStoreName(AppDisplay.instance().dpy, DefaultRootWindow(AppDisplay.instance().dpy), cast(char*) st1);
+    XSync(AppDisplay.instance().dpy, False);*/
 
 	Kernel kernel = new Kernel();
 	int response = kernel.boot();

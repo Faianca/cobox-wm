@@ -146,111 +146,7 @@ void updatetitle(Client *c)
         c.tags = c.tags & TAGMASK ? c.tags & TAGMASK : c.mon.tagset[c.mon.seltags];
     }
 
-    void manage(Window w, XWindowAttributes *wa) 
-    {
-        
-        Client *c, t = null;
-        Window trans = None;
-        XWindowChanges wc;
-
-        c = new Client();
-        if(c is null) {
-            die("fatal: could not malloc() %u bytes\n", Client.sizeof);
-        }
-        c.win = w;
-        updatetitle(c);
-
-        c.mon = null;
-        if(XGetTransientForHint(AppDisplay.instance().dpy, w, &trans)) {
-            t = wintoclient(trans);
-            if(t) {
-                c.mon = t.mon;
-                c.tags = t.tags;
-            }
-        } 
-
-        if(!c.mon) {
-            c.mon = selmon;
-            applyrules(c);
-        }
-
-        /* geometry */
-        c.x = c.oldx = wa.x;
-        c.y = c.oldy = wa.y;
-        c.w = c.oldw = wa.width;
-        c.h = c.oldh = wa.height;
-        c.oldbw = wa.border_width;
-
-        if(c.x + WIDTH(c) > c.mon.mx + c.mon.mw)
-            c.x = c.mon.mx + c.mon.mw - WIDTH(c);
-        if(c.y + HEIGHT(c) > c.mon.my + c.mon.mh)
-            c.y = c.mon.my + c.mon.mh - HEIGHT(c);
-        c.x = max(c.x, c.mon.mx);
-        /* only fix client y-offset, if the client center might cover the bar */
-        c.y = max(c.y, ((c.mon.by == c.mon.my) && (c.x + (c.w / 2) >= c.mon.wx)
-                        && (c.x + (c.w / 2) < c.mon.wx + c.mon.ww)) ? bh : c.mon.my);
-        c.bw = borderpx;
-
-        wc.border_width = c.bw;
-        XConfigureWindow(AppDisplay.instance().dpy, w, CWBorderWidth, &wc);
-        XSetWindowBorder(AppDisplay.instance().dpy, w, scheme[SchemeNorm].border.rgb);
-
-        configure(c); /* propagates border_width, if size doesn't change */
-        updatewindowtype(c);
-        updatesizehints(c);
-        updatewmhints(c);
-
-        XSelectInput(AppDisplay.instance().dpy, w, EnterWindowMask|FocusChangeMask|PropertyChangeMask|StructureNotifyMask);
-        mouseEventHandler.grabbuttons(c, false);
-        
-        if(!c.isfloating)
-            c.isfloating = c.oldstate = trans != None || c.isfixed;
-
-        if(c.isfloating)
-            XRaiseWindow(AppDisplay.instance().dpy, c.win);
-
-        attach(c);
-        attachstack(c);
-
-        XChangeProperty(AppDisplay.instance().dpy, rootWin, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend,
-                        cast(ubyte*)(&(c.win)), 1);
-        XMoveResizeWindow(AppDisplay.instance().dpy, c.win, c.x + 2 * sw, c.y, c.w, c.h); /* some windows require this */
-        
-        setclientstate(c, NormalState);
-
-        if (c.mon == selmon)
-            unfocus(selmon.sel, false);
-        c.mon.sel = c;
-
-        arrange(c.mon);
-        XMapWindow(AppDisplay.instance().dpy, c.win);
-        focus(null);
-    }
-
-    void unmanage(Client *c, bool destroyed) 
-    {
-        Monitor *m = c.mon;
-        XWindowChanges wc;
-
-        /* The server grab construct avoids race conditions. */
-        detach(c);
-        detachstack(c);
-        if(!destroyed) {
-            wc.border_width = c.oldbw;
-            XGrabServer(AppDisplay.instance().dpy);
-            XSetErrorHandler(&xerrordummy);
-            XConfigureWindow(AppDisplay.instance().dpy, c.win, CWBorderWidth, &wc); /* restore border */
-            XUngrabButton(AppDisplay.instance().dpy, AnyButton, AnyModifier, c.win);
-            setclientstate(c, WithdrawnState);
-            XSync(AppDisplay.instance().dpy, false);
-            XSetErrorHandler(&xerror);
-            XUngrabServer(AppDisplay.instance().dpy);
-        }
-        DGC.free(c);
-        focus(null);
-        updateclientlist();
-        arrange(m);
-    }
+    
 
 void quit(const Arg *arg) 
 {
@@ -369,14 +265,14 @@ class Kernel
                         || wa.override_redirect || XGetTransientForHint(AppDisplay.instance().dpy, wins[i], &d1))
                     continue;
                 if(wa.map_state == IsViewable || getstate(wins[i]) == IconicState)
-                    manage(wins[i], &wa);
+                    windowManager.manage(wins[i], &wa);
             }
             for(i = 0; i < num; i++) { /* now the transients */
                 if(!XGetWindowAttributes(AppDisplay.instance().dpy, wins[i], &wa))
                     continue;
                 if(XGetTransientForHint(AppDisplay.instance().dpy, wins[i], &d1)
                         && (wa.map_state == IsViewable || getstate(wins[i]) == IconicState))
-                    manage(wins[i], &wa);
+                    windowManager.manage(wins[i], &wa);
             }
             if(wins)
                 XFree(wins);
