@@ -683,7 +683,7 @@ void focus(Client *c) {
         detachstack(c);
         attachstack(c);
         mouseEventHandler.grabbuttons(c, true);
-        XSetWindowBorder(AppDisplay.instance().dpy, c.win, scheme[SchemeSel].border.rgb);
+        XSetWindowBorder(AppDisplay.instance().dpy, c.win, ThemeManager.instance().getScheme(SchemeSel).border.rgb);
         setfocus(c);
     } else {
         XSetInputFocus(AppDisplay.instance().dpy, rootWin, RevertToPointerRoot, CurrentTime);
@@ -757,7 +757,7 @@ void unfocus(Client *c, bool setfocus) {
     if(!c)
         return;
     mouseEventHandler.grabbuttons(c, false);
-    XSetWindowBorder(AppDisplay.instance().dpy, c.win, scheme[SchemeNorm].border.rgb);
+    XSetWindowBorder(AppDisplay.instance().dpy, c.win, ThemeManager.instance().getScheme(SchemeNorm).border.rgb);
     if(setfocus) {
         XSetInputFocus(AppDisplay.instance().dpy, rootWin, RevertToPointerRoot, CurrentTime);
         XDeleteProperty(AppDisplay.instance().dpy, rootWin, netatom[NetActiveWindow]);

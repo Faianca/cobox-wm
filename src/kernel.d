@@ -42,8 +42,8 @@ import monitor;
 
 static Drw *drw;
 static Fnt *fnt;
-static ClrScheme[SchemeLast] scheme;
 static Key[] keys;
+
 /* button definitions */
 /* click can be ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
 static Button[] buttons;
@@ -106,16 +106,7 @@ long getstate(Window w)
     return result;
 }
 
-void updatetitle(Client *c) 
-{
-    if(!X11Helper.gettextprop(c.win, netatom[NetWMName], c.name)) {
-        X11Helper.gettextprop(c.win, XA_WM_NAME, c.name);
-    }
 
-    if(c.name.length == 0) { /* hack to mark broken clients */
-        c.name = broken;
-    }
-}
 
     void applyrules(Client *c) 
     {
@@ -163,7 +154,6 @@ static Atom[NetLast] netatom;
 
 class Kernel
 {
-
     this()
     {
         keyboardEventHandler = new KeyboardEvents();
@@ -201,13 +191,6 @@ class Kernel
         cursor[CurResize] = new Cur(drw.dpy, CursorFont.XC_sizing);
         cursor[CurMove] = new Cur(drw.dpy, CursorFont.XC_fleur);
 
-        /* init appearance */
-        scheme[SchemeNorm].border = new Clr(drw, normbordercolor);
-        scheme[SchemeNorm].bg = new Clr(drw, normbgcolor);
-        scheme[SchemeNorm].fg = new Clr(drw, normfgcolor);
-        scheme[SchemeSel].border = new Clr(drw, selbordercolor);
-        scheme[SchemeSel].bg = new Clr(drw, selbgcolor);
-        scheme[SchemeSel].fg = new Clr(drw, selfgcolor);
 
         /* init bars */
         updatebars();
@@ -320,16 +303,19 @@ class Kernel
         while(mons) {
             cleanupmon(mons);
         }
+
         Cur.free(cursor[CurNormal]);
         Cur.free(cursor[CurResize]);
         Cur.free(cursor[CurMove]);
         Fnt.free(AppDisplay.instance().dpy, fnt);
-        Clr.free(scheme[SchemeNorm].border);
-        Clr.free(scheme[SchemeNorm].bg);
-        Clr.free(scheme[SchemeNorm].fg);
-        Clr.free(scheme[SchemeSel].border);
-        Clr.free(scheme[SchemeSel].bg);
-        Clr.free(scheme[SchemeSel].fg);
+        Clr.free(ThemeManager.instance().getScheme(SchemeNorm).border);
+        Clr.free(ThemeManager.instance().getScheme(SchemeNorm).bg);
+        Clr.free(ThemeManager.instance().getScheme(SchemeNorm).fg);
+        Clr.free(ThemeManager.instance().getScheme(SchemeSel).border);
+        Clr.free(ThemeManager.instance().getScheme(SchemeSel).bg);
+        Clr.free(ThemeManager.instance().getScheme(SchemeSel).fg);
+
+
         Drw.free(drw);
         XSync(AppDisplay.instance().dpy, false);
         XSetInputFocus(AppDisplay.instance().dpy, PointerRoot, RevertToPointerRoot, CurrentTime);

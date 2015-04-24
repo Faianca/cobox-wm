@@ -11,6 +11,8 @@ import config;
 import kernel;
 import helper.x11;
 import monitor;
+import std.stdio;
+import theme.manager;
 
 import deimos.X11.X;
 import deimos.X11.Xlib;
@@ -30,9 +32,15 @@ void drawbar(Monitor *m)
     }
 
     int x = 0, w;
+
+    ClrScheme sel = ThemeManager.instance().getScheme(SchemeSel);
+    ClrScheme norm = ThemeManager.instance().getScheme(SchemeNorm);
+
     foreach(i, tag; tags) {
         w = TEXTW(tag);
-        drw.setscheme((m.tagset[m.seltags] & (1 << i)) ? &scheme[SchemeSel] : &scheme[SchemeNorm]);
+        drw.setscheme((m.tagset[m.seltags] & (1 << i)) 
+            ? &sel
+            : &norm);
         drw.text(x, 0, w, bh, tag, urg & 1 << i);
         drw.rect(x, 0, w, bh, m == selmon && selmon.sel && selmon.sel.tags & 1 << i,
                  occ & 1 << i, urg & 1 << i);
@@ -40,7 +48,7 @@ void drawbar(Monitor *m)
     }
 
     w = blw = TEXTW(m.ltsymbol);
-    drw.setscheme(&scheme[SchemeNorm]);
+    drw.setscheme(&norm);
     drw.text(x, 0, w, bh, m.ltsymbol, 0);
     x += w;
     int xx = x;
@@ -60,11 +68,11 @@ void drawbar(Monitor *m)
     if((w = x - xx) > bh) {
         x = xx;
         if(m.sel) {
-            drw.setscheme(m == selmon ? &scheme[SchemeSel] : &scheme[SchemeNorm]);
+            drw.setscheme(m == selmon ? &sel : &norm);
             drw.text(x, 0, w, bh, m.sel.name, 0);
             drw.rect(x, 0, w, bh, m.sel.isfixed, m.sel.isfloating, 0);
         } else {
-            drw.setscheme(&scheme[SchemeNorm]);
+            drw.setscheme(&norm);
             drw.text(x, 0, w, bh, null, 0);
         }
     }
@@ -81,6 +89,7 @@ void drawbars()
 
 void updatebars()
 {
+    Client *c;
     XSetWindowAttributes wa = {
 		override_redirect : True,
 		background_pixmap : ParentRelative,
@@ -90,7 +99,7 @@ void updatebars()
     foreach(m; mons.range) {
         if (m.barwin)
             continue;
-
+        
         m.barwin = XCreateWindow(
         	AppDisplay.instance().dpy, 
         	rootWin, 
@@ -107,7 +116,10 @@ void updatebars()
         );
 
         XDefineCursor(AppDisplay.instance().dpy, m.barwin, cursor[CurNormal].cursor);
+
+        //sendevent(c, XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_WM_STATE_ABOVE"), false));
         XMapRaised(AppDisplay.instance().dpy, m.barwin);
+        //sendevent(c, XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_WM_STATE_ABOVE"), false));
     }
 }
 
