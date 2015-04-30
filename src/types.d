@@ -29,7 +29,7 @@ enum Keys
 	SHIFT = ShiftMask
 };
 
-enum { SchemeNorm, SchemeSel, SchemeLast }; /* color schemes */
+
 
 enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
        ClkClientWin, ClkRootWin, ClkLast }; /* clicks */

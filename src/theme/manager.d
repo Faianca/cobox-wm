@@ -17,32 +17,79 @@ import deimos.X11.keysymdef;
 import deimos.X11.Xutil;
 import deimos.X11.Xatom;
 
-class ThemeManager
+/* color schemes */
+enum 
+{ 
+    SchemeNorm, 
+    SchemeSel, 
+    SchemeLast 
+}; 
+
+/// The colour scheme to use
+struct ClrScheme 
 {
-	
-	this()
-	{
-		
-	}
-
-	void setlayout(const Arg *arg) 
-	{
-	    if(!arg || !arg.v || arg.v != selmon.lt[selmon.sellt])
-	        selmon.sellt ^= 1;
-
-	    if(arg && arg.v) {
-	        selmon.lt[selmon.sellt] = cast(Layout *)arg.v;
-	    }
-
-	    selmon.ltsymbol = selmon.lt[selmon.sellt].symbol;
-
-	    if(selmon.sel)
-	        arrange(selmon);
-	    else
-	        drawbar(selmon);
-	}
-
+    Clr *fg;
+    Clr *bg;
+    Clr *border;
 }
+
+class ThemeManager 
+{   
+  
+  ClrScheme[SchemeLast] scheme;
+
+  static ThemeManager instance() 
+  {
+    if (!instantiated_) {
+      synchronized {
+        if (instance_ is null) {
+          instance_ = new ThemeManager;
+        }
+        instantiated_ = true;
+      }
+    }
+    return instance_;
+  }
+
+  void setlayout(const Arg *arg) 
+  {
+        if(!arg || !arg.v || arg.v != selmon.lt[selmon.sellt])
+            selmon.sellt ^= 1;
+
+        if(arg && arg.v) {
+            selmon.lt[selmon.sellt] = cast(Layout *)arg.v;
+        }
+
+        selmon.ltsymbol = selmon.lt[selmon.sellt].symbol;
+
+        if(selmon.sel)
+            arrange(selmon);
+        else
+            drawbar(selmon);
+    }
+
+  ClrScheme getScheme(int type)
+  {
+     return this.scheme[type];
+  }
+
+
+ private:
+  this() 
+  {
+        /* init appearance */
+        scheme[SchemeNorm].border = new Clr(drw, normbordercolor);
+        scheme[SchemeNorm].bg = new Clr(drw, normbgcolor);
+        scheme[SchemeNorm].fg = new Clr(drw, normfgcolor);
+        scheme[SchemeSel].border = new Clr(drw, selbordercolor);
+        scheme[SchemeSel].bg = new Clr(drw, selbgcolor);
+        scheme[SchemeSel].fg = new Clr(drw, selfgcolor);  
+  }
+
+  static bool instantiated_;  // Thread local
+  __gshared ThemeManager instance_;
+
+ }
 
 /**
  * Drw provides an interface for working with drawable surfaces.

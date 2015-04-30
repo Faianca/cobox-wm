@@ -54,10 +54,3 @@ struct Clr
         }
     }
 }
-
-struct ClrScheme 
-{
-	Clr *fg;
-	Clr *bg;
-	Clr *border;
-}

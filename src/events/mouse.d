@@ -198,7 +198,8 @@ void movemouse(const Arg *arg)
             case ConfigureRequest:
             case Expose:
             case MapRequest:
-                handler[ev.type](&ev);
+                writeln(ev.type);
+                //handler[ev.type](&ev);
                 break;
             case MotionNotify:
                 if ((ev.xmotion.time - lasttime) <= (1000 / 60))

@@ -11,6 +11,7 @@ import utils;
 import legacy;
 import monitor;
 import helper.x11;
+import theme.manager;
 
 import std.algorithm;
 import deimos.X11.X;
@@ -28,6 +29,7 @@ enum {
     NetActiveWindow,
     NetWMWindowType,
     NetWMWindowTypeDialog, 
+    NetWMWindowOnTop,
     NetClientList, 
     NetLast 
 }; /* EWMH atoms */
@@ -61,6 +63,7 @@ class WindowManager
         netatom[NetWMWindowType] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_WM_WINDOW_TYPE".toStringz), false);
         netatom[NetWMWindowTypeDialog] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_WM_WINDOW_TYPE_DIALOG".toStringz), false);
         netatom[NetClientList] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_CLIENT_LIST".toStringz), false);	
+	    netatom[NetWMWindowOnTop] = XInternAtom(AppDisplay.instance().dpy, cast(char*)("_NET_WM_STATE_ABOVE".toStringz), false);	
 	}
 
 	Atom[] getAllAtoms(string atomType = "NetLast")
@@ -199,8 +202,9 @@ class WindowManager
 	    c.bw = borderpx;
 
 	    wc.border_width = c.bw;
+
 	    XConfigureWindow(AppDisplay.instance().dpy, w, CWBorderWidth, &wc);
-	    XSetWindowBorder(AppDisplay.instance().dpy, w, scheme[SchemeNorm].border.rgb);
+	    XSetWindowBorder(AppDisplay.instance().dpy, w, ThemeManager.instance().getScheme(SchemeNorm).border.rgb);
 
 	    configure(c); /* propagates border_width, if size doesn't change */
 	    updatewindowtype(c);
@@ -263,6 +267,18 @@ class WindowManager
 	}
 }
 
+void updatetitle(Client *c) 
+{
+    if(!X11Helper.gettextprop(c.win, netatom[NetWMName], c.name)) {
+        X11Helper.gettextprop(c.win, XA_WM_NAME, c.name);
+    }
+    
+    /* hack to mark broken clients */
+    if(c.name.length == 0) { 
+        c.name = broken;
+    }
+}
+
 void unmanage(Client *c, bool destroyed) 
 {
     Monitor *m = c.mon;
@@ -271,6 +287,7 @@ void unmanage(Client *c, bool destroyed)
     /* The server grab construct avoids race conditions. */
     detach(c);
     detachstack(c);
+
     if(!destroyed) {
         wc.border_width = c.oldbw;
         XGrabServer(AppDisplay.instance().dpy);
@@ -282,6 +299,7 @@ void unmanage(Client *c, bool destroyed)
         XSetErrorHandler(&xerror);
         XUngrabServer(AppDisplay.instance().dpy);
     }
+    
     DGC.free(c);
     focus(null);
     updateclientlist();
