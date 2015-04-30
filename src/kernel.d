@@ -117,37 +117,35 @@ void updatetitle(Client *c)
     }
 }
 
-    void applyrules(Client *c) 
-    {
-        XClassHint ch = { null, null };
-        /* rule matching */
-        c.isfloating = false;
-        c.tags = 0;
-        XGetClassHint(AppDisplay.instance().dpy, c.win, &ch);
-        immutable auto klass    = ch.res_class ? ch.res_class.to!string : broken;
-        immutable auto instance = ch.res_name  ? ch.res_name.to!string : broken;
-        foreach(immutable r; rules) {
-            if( (r.title.length==0 || r.title.indexOf(c.name) >= 0) &&
-                    (r.klass.length==0 || r.klass.indexOf(klass) >= 0) &&
-                    (r.instance.length==0 || r.instance.indexOf(instance) >= 0)) {
-                c.isfloating = r.isfloating;
-                c.tags |= r.tags;
+void applyrules(Client *c) 
+{
+    XClassHint ch = { null, null };
+    /* rule matching */
+    c.isfloating = false;
+    c.tags = 0;
+    XGetClassHint(AppDisplay.instance().dpy, c.win, &ch);
+    immutable auto klass    = ch.res_class ? ch.res_class.to!string : broken;
+    immutable auto instance = ch.res_name  ? ch.res_name.to!string : broken;
+    foreach(immutable r; rules) {
+        if( (r.title.length==0 || r.title.indexOf(c.name) >= 0) &&
+                (r.klass.length==0 || r.klass.indexOf(klass) >= 0) &&
+                (r.instance.length==0 || r.instance.indexOf(instance) >= 0)) {
+            c.isfloating = r.isfloating;
+            c.tags |= r.tags;
 
-                auto m = mons.range.find!(mon => mon.num == r.monitor).front;
-                if(m) {
-                    c.mon = m;
-                }
+            auto m = mons.range.find!(mon => mon.num == r.monitor).front;
+            if(m) {
+                c.mon = m;
             }
         }
-        if(ch.res_class)
-            XFree(ch.res_class);
-        if(ch.res_name)
-            XFree(ch.res_name);
-        c.tags = c.tags & TAGMASK ? c.tags & TAGMASK : c.mon.tagset[c.mon.seltags];
     }
-
-    
-
+    if(ch.res_class)
+        XFree(ch.res_class);
+    if(ch.res_name)
+        XFree(ch.res_name);
+    c.tags = c.tags & TAGMASK ? c.tags & TAGMASK : c.mon.tagset[c.mon.seltags];
+}
+   
 void quit(const Arg *arg) 
 {
     AppDisplay.instance().running = false;

@@ -151,7 +151,6 @@ void destroynotify(XEvent *e)
     }
 }
 
-
 void enternotify(XEvent *e) 
 {
     Client *c;

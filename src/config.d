@@ -19,7 +19,7 @@ static immutable Rule[] rules = [
 	 *  WM_NAME(STRING) = title
 	 */
 	/* klass      instance    title       tags mask     isfloating   monitor */
-	{ "xterm",     null,       null,       1 << 8,        false,  -1 },
+	{ "xterm",     null,       null,       1,        false,  -1 },
 	//{ "Firefox",  null,       null,       1 << 8,       false,       -1 },
 ];
 
