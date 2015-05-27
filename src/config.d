@@ -8,8 +8,8 @@ enum MODKEY = Mod1Mask;
 
 static immutable Layout[] layouts = [
     /* symbol            arrange function */
+    { symbol:"><>",      arrange:null },  /* no layout function means floating behavior */
     { symbol:"[]=",      arrange:&tile },    /* first entry is default */
-    { symbol:"><>",      arrange:null },    /* no layout function means floating behavior */
     { symbol:"[M]",      arrange:&monocle },
 ];
 

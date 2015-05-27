@@ -35,7 +35,6 @@ class EventHandler
 	    handler[ConfigureRequest] = &configurerequest;
 	    handler[ConfigureNotify] = &configurenotify;
 	    handler[DestroyNotify] = &destroynotify;
-	    handler[EnterNotify] = &enternotify;
 	    handler[Expose] = &expose;
 	    handler[FocusIn] = &focusin;
 	    handler[MappingNotify] = &mappingnotify;
