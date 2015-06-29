@@ -123,12 +123,6 @@ class MouseEvents : EventInterface
 	    /* focus monitor if necessary */
 	    m = cast(Monitor*)wintomon(ev.window);
 
-	    //if( (m !is null) && (m != selmon) ) {
-	       //unfocus(selmon.sel, true);
-	       //selmon = m;
-	       //focus(null);
-	    //}
-
 	    if(ev.window == selmon.barwin) {
 	        i = x = 0;
 	        do {
@@ -170,11 +164,14 @@ void movemouse(const Arg *arg)
     Time lasttime = 0;
 
     c = selmon.sel;
+
     if(!c) {
         return;
     }
+
     if(c.isfullscreen) /* no support moving fullscreen windows by mouse */
         return;
+
     restack(selmon);
     ocx = c.x;
     ocy = c.y;
@@ -189,9 +186,11 @@ void movemouse(const Arg *arg)
                     CurrentTime) != GrabSuccess) {
         return;
     }
+
     if(!getrootptr(&x, &y)) {
         return;
     }
+
     do {
         XMaskEvent(AppDisplay.instance().dpy, MOUSEMASK|ExposureMask|SubstructureRedirectMask, &ev);
         switch(ev.type) {
@@ -202,6 +201,7 @@ void movemouse(const Arg *arg)
                 //handler[ev.type](&ev);
                 break;
             case MotionNotify:
+
                 if ((ev.xmotion.time - lasttime) <= (1000 / 60))
                     continue;
                 lasttime = ev.xmotion.time;
@@ -222,6 +222,7 @@ void movemouse(const Arg *arg)
                             && (abs(nx - c.x) > snap || abs(ny - c.y) > snap))
                         togglefloating(null);
                 }
+
                 if(!selmon.lt[selmon.sellt].arrange || c.isfloating)
                     resize(c, nx, ny, c.w, c.h, true);
                 break;
@@ -230,6 +231,7 @@ void movemouse(const Arg *arg)
         }
     } while(ev.type != ButtonRelease);
     XUngrabPointer(AppDisplay.instance().dpy, CurrentTime);
+
     if((m = recttomon(c.x, c.y, c.w, c.h)) != selmon) {
         sendmon(c, m);
         selmon = m;

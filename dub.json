@@ -1,8 +1,9 @@
 {
 	"name": "cobox-wm",
-	"description": "A minimal D application.",
+	"description": "Window Manager fork from DDWM and Fluxbox.",
 	"copyright": "Copyright © 2015, root",
 	"authors": ["faianca"],
+	"license": "MIT-License",
 	"dependencies":{
 		"libx11":">=0.0.1"
 	}
