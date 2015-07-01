@@ -59,7 +59,7 @@ class KeyboardEvents : EventInterface
 		keys = [
 	        Key( MODKEY,                       XK_p,      &spawn,         dmenucmd ), // dmenucmd
 	        Key( MODKEY|ShiftMask,             XK_Return, &spawn,          termcmd ), // termcmd
-	        Key( MODKEY,                       XK_b,      &togglebar       ),
+	        Key( MODKEY,                       XK_b,      &togglebar       ), // TopBar.instance().togglebar
 	        Key( MODKEY,                       XK_j,      &focusstack,     +1  ),
 	        Key( MODKEY,                       XK_k,      &focusstack,     -1  ),
 	        Key( MODKEY,                       XK_i,      &incnmaster,     +1  ),

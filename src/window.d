@@ -110,9 +110,9 @@ class WindowManager
 	        XMoveWindow(AppDisplay.instance().dpy, c.win, c.x, c.y);
 	        if((!c.mon.lt[c.mon.sellt].arrange || c.isfloating) && !c.isfullscreen)
 	            resize(c, c.x, c.y, c.w, c.h, false);
-	        showhide(c.snext);
+	        this.showhide(c.snext);
 	    } else { /* hide clients bottom up */
-	        showhide(c.snext);
+	        this.showhide(c.snext);
 	        XMoveWindow(AppDisplay.instance().dpy, c.win, WIDTH(c) * -2, c.y);
 	    }
 	}
@@ -168,7 +168,7 @@ class WindowManager
 	        die("fatal: could not malloc() %u bytes\n", Client.sizeof);
 	    }
 	    c.win = w;
-	    updatetitle(c);
+	    this.updatetitle(c);
 
 	    c.mon = null;
 	    if(XGetTransientForHint(AppDisplay.instance().dpy, w, &trans)) {
@@ -265,18 +265,6 @@ class WindowManager
 	    if(wtype == netatom[NetWMWindowTypeDialog])
 	        c.isfloating = true;
 	}
-}
-
-void updatetitle(Client *c) 
-{
-    if(!X11Helper.gettextprop(c.win, netatom[NetWMName], c.name)) {
-        X11Helper.gettextprop(c.win, XA_WM_NAME, c.name);
-    }
-    
-    /* hack to mark broken clients */
-    if(c.name.length == 0) { 
-        c.name = broken;
-    }
 }
 
 void unmanage(Client *c, bool destroyed) 
