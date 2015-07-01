@@ -41,6 +41,11 @@ class AppDisplay
     return instance_;
   }
 
+  void quit() 
+  {
+     this.running = false;
+  }
+
  private:
   this() {}
   static bool instantiated_;  // Thread local

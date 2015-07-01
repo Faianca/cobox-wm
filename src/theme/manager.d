@@ -8,6 +8,7 @@ import window;
 import types;
 import gui.bar;
 import kernel;
+import monitor;
 
 import std.algorithm;
 import std.c.string;

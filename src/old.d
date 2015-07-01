@@ -438,48 +438,9 @@ void setmfact(const Arg *arg) {
     arrange(selmon);
 }
 
-void tile(Monitor *m) 
+
+bool updategeom() 
 {
-    uint i, n, h, mw, my, ty;
-    Client *c;
-
-    for(n = 0, c = nexttiled(m.clients); c; c = nexttiled(c.next), n++) {}
-    if(n == 0) {
-        return;
-    }
-
-    if(n > m.nmaster) {
-        mw = cast(uint)(m.nmaster ? m.ww * m.mfact : 0);
-    } else {
-        mw = m.ww;
-    }
-    for(i = my = ty = 0, c = nexttiled(m.clients); c; c = nexttiled(c.next), i++) {
-        if(i < m.nmaster) {
-            h = (m.wh - my) / (min(n, m.nmaster) - i);
-            resize(c, m.wx, m.wy + my, mw - (2*c.bw), h - (2*c.bw), false);
-            my += HEIGHT(c);
-        } else {
-            h = (m.wh - ty) / (n - i);
-            resize(c, m.wx + mw, m.wy + ty, m.ww - mw - (2*c.bw), h - (2*c.bw), false);
-            ty += HEIGHT(c);
-        }
-    }
-}
-
-void monocle(Monitor *m) 
-{
-    uint n = 0;
-
-    n = m.clients.range!"next".map!(a=>ISVISIBLE(a)).sum;
-    if(n > 0) { /* override layout symbol */
-        m.ltsymbol = format("[%d]", n);
-    }
-    for(auto c = nexttiled(m.clients); c; c = nexttiled(c.next)) {
-        resize(c, m.wx, m.wy, m.ww - 2 * c.bw, m.wh - 2 * c.bw, false);
-    }
-}
-
-bool updategeom() {
     
     bool dirty = false;
 
@@ -822,8 +783,6 @@ void clearurgent(Client *c) {
     XSetWMHints(AppDisplay.instance().dpy, c.win, wmh);
     XFree(wmh);
 }
-
-
 
 void detachstack(Client *c) 
 {

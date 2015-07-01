@@ -157,6 +157,7 @@ class MouseEvents : EventInterface
 
 void movemouse(const Arg *arg) 
 {
+    writeln("yoo");
     int x, y, ocx, ocy, nx, ny;
     Client *c;
     Monitor *m;

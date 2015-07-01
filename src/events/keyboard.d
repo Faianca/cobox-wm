@@ -32,9 +32,27 @@ struct Key {
     }
 }
 
+struct EventKey {
+	uint mod;
+	KeySym keysym;
+    void delegate() func;
+    const Arg arg;
+
+    this(uint mod, KeySym keysym, void delegate() func) {
+        this(mod, keysym, func, null);
+    }
+    this(T)(uint mod, KeySym keysym, void delegate() func, T arg) {
+        this.mod = mod;
+        this.keysym = keysym;
+        this.func = func;
+        this.arg = makeArg(arg);
+    }
+}
+
 class KeyboardEvents : EventInterface
 {
 	Key[] keys;
+	EventKey[] eventKeys;
 
 	this() 
 	{
@@ -97,13 +115,19 @@ class KeyboardEvents : EventInterface
 	        Key( MODKEY,                       XK_9,      &view,           1<<8 ),
 	        Key( MODKEY|ControlMask,           XK_9,      &toggleview,     1<<8 ),
 	        Key( MODKEY|ShiftMask,             XK_9,      &tag,            1<<8 ),
-	        Key( MODKEY|ControlMask|ShiftMask, XK_9,      &toggletag,      1<<8 ),
-	        Key( MODKEY|ShiftMask,             XK_q,      &quit					)
+	        Key( MODKEY|ControlMask|ShiftMask, XK_9,      &toggletag,      1<<8 )
+	        //Key( MODKEY|ShiftMask,             XK_q,      &quit					)
 	    ];
     }
 
-    void addEvent()
+    void addEvent(int keyMod, const(int) keySymbol, void delegate() dg)
     {
+    	eventKeys[] = EventKey(keyMod, keySymbol, dg);	
+    }	
+
+    void addEvent(T)(int keyMod, const(int) keySymbol, void delegate() dg, T arg)
+    {
+    	eventKeys[] = EventKey(keyMod, keySymbol, dg, arg);	
     }
 
     void listen(XEvent *e)
