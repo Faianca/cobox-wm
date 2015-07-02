@@ -73,7 +73,6 @@ void updateclientlist()
 }
 
 
-
 bool getrootptr(int *x, int *y) 
 {
     int di;
@@ -342,21 +341,6 @@ void toggleview(const Arg *arg) {
     }
 }
 
-
-void spawn(const Arg *arg) {
-    import std.variant;
-    Variant v = arg.val;
-    const(string[]) args = arg.s;
-    if(args[0] == dmenucmd[0]) {
-        dmenumon[0] =cast(char)('0' + selmon.num);
-    }
-    try {
-        auto pid = spawnProcess(args);
-    } catch {
-        die("Failed to spawn '%s'", args);
-    }
-}
-
 void zoom(const Arg *arg) {
     
     Client *c = selmon.sel;
@@ -376,19 +360,6 @@ void zoom(const Arg *arg) {
     pop(c);
 }
 
-void setlayout(const Arg *arg) 
-{
-    if(!arg || !arg.v || arg.v != selmon.lt[selmon.sellt])
-        selmon.sellt ^= 1;
-    if(arg && arg.v) {
-        selmon.lt[selmon.sellt] = cast(Layout *)arg.v;
-    }
-    selmon.ltsymbol = selmon.lt[selmon.sellt].symbol;
-    if(selmon.sel)
-        arrange(selmon);
-    else
-        drawbar(selmon);
-}
 
 void view(const Arg *arg) {
     

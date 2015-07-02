@@ -52,10 +52,8 @@ class MouseEvents : EventInterface
 	{
 	    buttons = [
 	        /* click                event mask      button          function        argument */
-	        Button( ClkLtSymbol,          0,              Button1,        &setlayout ),
-	        Button( ClkLtSymbol,          0,              Button3,        &setlayout,      &layouts[2] ),
 	        Button( ClkWinTitle,          0,              Button2,        &zoom ),
-	        Button( ClkStatusText,        0,              Button2,        &spawn,          termcmd ), // &termcmd
+	        //Button( ClkStatusText,        0,              Button2,        &spawn,          termcmd ), // &termcmd
 	        Button( ClkClientWin,         MODKEY,         Button1,        &movemouse ),
 	        Button( ClkClientWin,         MODKEY,         Button2,        &togglefloating ),
 	        Button( ClkClientWin,         MODKEY,         Button3,        &resizemouse ),
@@ -78,12 +76,7 @@ class MouseEvents : EventInterface
 
 	void listen(XEvent *e)
     {
-    	switch (e.type) {
-    		case ButtonPress:
-				this.buttonpress(e);
-    			break;
-    		default: { }
-    	}
+		this.buttonpress(e);
     }
 
     void grabbuttons(Client *c, bool focused) 
@@ -92,6 +85,7 @@ class MouseEvents : EventInterface
 	    uint i, j;
 	    uint[] modifiers = [ 0, LockMask, numlockmask, numlockmask|LockMask ];
 	    XUngrabButton(AppDisplay.instance().dpy, AnyButton, AnyModifier, c.win);
+
 	    if(focused) {
 	        foreach(ref const but; this.buttons) {
 	            if(but.click == ClkClientWin) {
@@ -119,15 +113,17 @@ class MouseEvents : EventInterface
 	    XButtonPressedEvent *ev = &e.xbutton;
 
 	    click = ClkRootWin;
-
+  
 	    /* focus monitor if necessary */
 	    m = cast(Monitor*)wintomon(ev.window);
 
 	    if(ev.window == selmon.barwin) {
+
 	        i = x = 0;
 	        do {
 	            x += TEXTW(tags[i]);
 	        } while(ev.x >= x && ++i < LENGTH(tags));
+
 	        if(i < LENGTH(tags)) {
 	            click = ClkTagBar;
 	            arg.ui = 1 << i;
@@ -144,6 +140,7 @@ class MouseEvents : EventInterface
 	            click = ClkClientWin;
 	        }
 	    }
+
 	    foreach(ref const but; buttons) {
 	        if(click == but.click &&
 	                but.func !is null &&
@@ -157,7 +154,6 @@ class MouseEvents : EventInterface
 
 void movemouse(const Arg *arg) 
 {
-    writeln("yoo");
     int x, y, ocx, ocy, nx, ny;
     Client *c;
     Monitor *m;

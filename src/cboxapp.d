@@ -26,7 +26,7 @@ class AppDisplay
 
   Display *dpy;
   bool running = true;
-
+  
   static AppDisplay instance() 
   {
     if (!instantiated_) {

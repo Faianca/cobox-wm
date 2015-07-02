@@ -35,7 +35,7 @@ void drawbar(Monitor *m)
 
     ClrScheme sel = ThemeManager.instance().getScheme(SchemeSel);
     ClrScheme norm = ThemeManager.instance().getScheme(SchemeNorm);
-
+    
     foreach(i, tag; tags) {
         w = TEXTW(tag);
         drw.setscheme((m.tagset[m.seltags] & (1 << i)) 
@@ -47,10 +47,6 @@ void drawbar(Monitor *m)
         x += w;
     }
 
-    w = blw = TEXTW(m.ltsymbol);
-    drw.setscheme(&norm);
-    drw.text(x, 0, w, bh, m.ltsymbol, 0);
-    x += w;
     int xx = x;
 
     if(m == selmon) { /* status is only drawn on selected monitor */
@@ -60,6 +56,8 @@ void drawbar(Monitor *m)
             x = xx;
             w = m.ww - xx;
         }
+
+        drw.setscheme(&norm);
         drw.text(x, 0, w, bh, stext, 0);
     } else {
         x = m.ww;

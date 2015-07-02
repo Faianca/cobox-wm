@@ -10,6 +10,7 @@ import std.algorithm;
 import std.conv;
 import std.process;
 import std.traits;
+import helper.process;
 
 import core.sys.posix.signal;
 import core.sys.posix.sys.wait;
@@ -48,7 +49,6 @@ static Key[] keys;
 /* click can be ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
 static Button[] buttons;
 static void function(XEvent*)[LASTEvent] handler;
-static immutable string VERSION = "0.1 Cobox";
 
 
 EventHandler eventManager;
@@ -59,13 +59,18 @@ WindowManager windowManager;
 static Atom[WMLast] wmatom;
 static Atom[NetLast] netatom;
 
+void quit(const Arg *arg) 
+{
+    AppDisplay.instance().running = false;
+}
+
 class Kernel
 {
     this()
     {
         keyboardEventHandler = new KeyboardEvents();
-        keyboardEventHandler.addEvent(MODKEY|ShiftMask, XK_p, &AppDisplay.instance.quit);    
-        //keyboardEventHandler.addEvent(MODKEY, XK_p,  &spawn, dmenucmd);    
+        keyboardEventHandler.addEvent(MODKEY|ShiftMask, XK_q, &quit);    
+        keyboardEventHandler.addEvent(MODKEY, XK_p, &spawn, dmenucmd);
 
         mouseEventHandler = new MouseEvents();
         eventManager = new EventHandler(keyboardEventHandler, mouseEventHandler);

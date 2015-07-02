@@ -48,8 +48,17 @@ class EventHandler
 
 	void listen(XEvent* ev)
 	{
-		this.keyboard.listen(ev);
-		this.mouse.listen(ev);
+        switch (ev.type) {
+            case KeyPress:
+                this.keyboard.listen(ev);
+                break;
+
+            case ButtonPress:
+                this.mouse.listen(ev);
+                break;
+
+            default: { }
+        }
 
 		if(handler[ev.type]) {
             handler[ev.type](ev); /* call handler */

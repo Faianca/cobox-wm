@@ -1,6 +1,8 @@
 {
 	"fileVersion": 1,
 	"versions": {
-		"libx11": "0.0.1"
+		"libx11": "0.0.1",
+		"dyaml": "0.5.1",
+		"tinyendian": "0.1.2"
 	}
 }

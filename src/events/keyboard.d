@@ -6,6 +6,7 @@ import config;
 import types;
 import cboxapp;
 import gui.bar;
+import helper.process;
 
 import deimos.X11.X;
 import deimos.X11.Xlib;
@@ -32,32 +33,13 @@ struct Key {
     }
 }
 
-struct EventKey {
-	uint mod;
-	KeySym keysym;
-    void delegate() func;
-    const Arg arg;
-
-    this(uint mod, KeySym keysym, void delegate() func) {
-        this(mod, keysym, func, null);
-    }
-    this(T)(uint mod, KeySym keysym, void delegate() func, T arg) {
-        this.mod = mod;
-        this.keysym = keysym;
-        this.func = func;
-        this.arg = makeArg(arg);
-    }
-}
-
 class KeyboardEvents : EventInterface
 {
 	Key[] keys;
-	EventKey[] eventKeys;
 
 	this() 
 	{
 		keys = [
-	        Key( MODKEY,                       XK_p,      &spawn,         dmenucmd ), // dmenucmd
 	        Key( MODKEY|ShiftMask,             XK_Return, &spawn,          termcmd ), // termcmd
 	        Key( MODKEY,                       XK_b,      &togglebar       ), // TopBar.instance().togglebar
 	        Key( MODKEY,                       XK_j,      &focusstack,     +1  ),
@@ -69,10 +51,6 @@ class KeyboardEvents : EventInterface
 	        Key( MODKEY,                       XK_Return, &zoom            ),
 	        Key( MODKEY,                       XK_Tab,    &view            ),
 	        Key( MODKEY|ShiftMask,             XK_c,      &killclient      ),
-	        Key( MODKEY,                       XK_t,      &setlayout,      &layouts[0] ),
-	        Key( MODKEY,                       XK_f,      &setlayout,      &layouts[1] ),
-	        Key( MODKEY,                       XK_m,      &setlayout,      &layouts[2] ),
-	        Key( MODKEY,                       XK_space,  &setlayout,      0 ),
 	        Key( MODKEY|ShiftMask,             XK_space,  &togglefloating, 0 ),
 	        Key( MODKEY,                       XK_0,      &view,           ~0  ),
 	        Key( MODKEY|ShiftMask,             XK_0,      &tag,            ~0  ),
@@ -116,28 +94,22 @@ class KeyboardEvents : EventInterface
 	        Key( MODKEY|ControlMask,           XK_9,      &toggleview,     1<<8 ),
 	        Key( MODKEY|ShiftMask,             XK_9,      &tag,            1<<8 ),
 	        Key( MODKEY|ControlMask|ShiftMask, XK_9,      &toggletag,      1<<8 )
-	        //Key( MODKEY|ShiftMask,             XK_q,      &quit					)
 	    ];
     }
 
-    void addEvent(int keyMod, const(int) keySymbol, void delegate() dg)
+    void addEvent(uint keyMod, const(int) keySymbol, void function(const Arg* a) dg)
     {
-    	eventKeys[] = EventKey(keyMod, keySymbol, dg);	
+    	this.keys ~= Key(keyMod, keySymbol, dg);
     }	
 
-    void addEvent(T)(int keyMod, const(int) keySymbol, void delegate() dg, T arg)
+    void addEvent(T)(uint keyMod, const(int) keySymbol, void function(const Arg* a) dg, T arg)
     {
-    	eventKeys[] = EventKey(keyMod, keySymbol, dg, arg);	
+    	this.keys ~= Key(keyMod, keySymbol, dg, arg);	
     }
 
     void listen(XEvent *e)
     {
-    	switch (e.type) {
-    		case KeyPress:
-				this.keypress(e);
-    			break;
-    		default: { }
-    	}
+		this.keypress(e);
     }
 
     void keypress(XEvent *e) 
@@ -148,6 +120,7 @@ class KeyboardEvents : EventInterface
 
 	    ev = &e.xkey;
 	    keysym = XKeycodeToKeysym(AppDisplay.instance().dpy, cast(KeyCode)ev.keycode, 0);
+	  
 	    foreach(ref const key; keys) {
 	        if(keysym == key.keysym
 	                && CLEANMASK(key.mod) == CLEANMASK(ev.state)

@@ -4,13 +4,14 @@ import types;
 import old;
 import theme.layout;
 
+static immutable string VERSION = "0.1 Cobox";
 enum MODKEY = Mod1Mask;
 
 static immutable Layout[] layouts = [
     /* symbol            arrange function */
     { symbol:"><>",      arrange:null },  /* no layout function means floating behavior */
-    { symbol:"[]=",      arrange:&tile },    /* first entry is default */
-    { symbol:"[M]",      arrange:&monocle },
+    /* { symbol:"[]=",      arrange:&tile },    first entry is default 
+    { symbol:"[M]",      arrange:&monocle },*/
 ];
 
 static immutable Rule[] rules = [

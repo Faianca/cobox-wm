@@ -52,23 +52,6 @@ class ThemeManager
     return instance_;
   }
 
-  void setlayout(const Arg *arg) 
-  {
-        if(!arg || !arg.v || arg.v != selmon.lt[selmon.sellt])
-            selmon.sellt ^= 1;
-
-        if(arg && arg.v) {
-            selmon.lt[selmon.sellt] = cast(Layout *)arg.v;
-        }
-
-        selmon.ltsymbol = selmon.lt[selmon.sellt].symbol;
-
-        if(selmon.sel)
-            arrange(selmon);
-        else
-            drawbar(selmon);
-    }
-
   ClrScheme getScheme(int type)
   {
      return this.scheme[type];

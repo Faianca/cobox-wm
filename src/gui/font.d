@@ -38,7 +38,7 @@ struct Fnt
             exit(EXIT_FAILURE);
         }
 
-        this,dpy = dpy;
+        this.dpy = dpy;
         char *def;
         char **missing;
         int n;
