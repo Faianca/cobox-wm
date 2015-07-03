@@ -17,6 +17,7 @@ import deimos.X11.Xutil;
 import deimos.X11.Xatom;
 import std.stdio;
 import std.string;
+import std.algorithm;
 
 
 struct Layout 

@@ -10,6 +10,7 @@ import std.algorithm;
 import std.conv;
 import std.process;
 import std.traits;
+import helper.process;
 
 import core.sys.posix.signal;
 import core.sys.posix.sys.wait;
@@ -48,101 +49,7 @@ static Key[] keys;
 /* click can be ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
 static Button[] buttons;
 static void function(XEvent*)[LASTEvent] handler;
-static immutable string VERSION = "0.1 Cobox";
 
-
-void arrange(Monitor *m) 
-{
-    if(m) {
-        windowManager.showhide(m.stack);
-    } else foreach(m; mons.range) {
-        windowManager.showhide(m.stack);
-    }
-    if(m) {
-        arrangemon(m);
-        restack(m);
-    } else foreach(m; mons.range) {
-        arrangemon(m);
-    }
-}
-
-void arrangemon(Monitor *m) {
-    
-    m.ltsymbol = m.lt[m.sellt].symbol;
-
-    if(m.lt[m.sellt].arrange)
-        m.lt[m.sellt].arrange(m);
-}
-
-void attach(Client *c) {
-    
-    c.next = c.mon.clients;
-    c.mon.clients = c;
-}
-
-void attachstack(Client *c) {
-    
-    c.snext = c.mon.stack;
-    c.mon.stack = c;
-}
-
-long getstate(Window w) 
-{
-    int format;
-    long result = -1;
-    ubyte *p = null;
-    ulong n, extra;
-    Atom realVal;
-
-    if(XGetWindowProperty(AppDisplay.instance().dpy, w, wmatom[WMState], 0L, 2L, false, wmatom[WMState],
-       &realVal, &format, &n, &extra, cast(ubyte **)&p) != XErrorCode.Success) {
-       	writeln("here");
-        return -1;
-    }
-    if(n != 0) {
-        result = *p;
-    }
-    XFree(p);
-    return result;
-}
-
-
-
-    void applyrules(Client *c) 
-    {
-        XClassHint ch = { null, null };
-        /* rule matching */
-        c.isfloating = false;
-        c.tags = 0;
-        XGetClassHint(AppDisplay.instance().dpy, c.win, &ch);
-        immutable auto klass    = ch.res_class ? ch.res_class.to!string : broken;
-        immutable auto instance = ch.res_name  ? ch.res_name.to!string : broken;
-        foreach(immutable r; rules) {
-            if( (r.title.length==0 || r.title.indexOf(c.name) >= 0) &&
-                    (r.klass.length==0 || r.klass.indexOf(klass) >= 0) &&
-                    (r.instance.length==0 || r.instance.indexOf(instance) >= 0)) {
-                c.isfloating = r.isfloating;
-                c.tags |= r.tags;
-
-                auto m = mons.range.find!(mon => mon.num == r.monitor).front;
-                if(m) {
-                    c.mon = m;
-                }
-            }
-        }
-        if(ch.res_class)
-            XFree(ch.res_class);
-        if(ch.res_name)
-            XFree(ch.res_name);
-        c.tags = c.tags & TAGMASK ? c.tags & TAGMASK : c.mon.tagset[c.mon.seltags];
-    }
-
-    
-
-void quit(const Arg *arg) 
-{
-    AppDisplay.instance().running = false;
-}
 
 EventHandler eventManager;
 KeyboardEvents keyboardEventHandler;
@@ -152,11 +59,18 @@ WindowManager windowManager;
 static Atom[WMLast] wmatom;
 static Atom[NetLast] netatom;
 
+void quit(const Arg *arg) 
+{
+    AppDisplay.instance().running = false;
+}
+
 class Kernel
 {
     this()
     {
         keyboardEventHandler = new KeyboardEvents();
+        keyboardEventHandler.addEvent(MODKEY|ShiftMask, XK_q, &quit);    
+        keyboardEventHandler.addEvent(MODKEY, XK_p, &spawn, dmenucmd);
 
         mouseEventHandler = new MouseEvents();
         eventManager = new EventHandler(keyboardEventHandler, mouseEventHandler);
@@ -164,6 +78,30 @@ class Kernel
 
         wmatom = windowManager.getAllAtoms("WMLast");
         netatom = windowManager.getAllAtoms("NetLast");
+    }
+
+    int boot()
+    {
+        keys = keyboardEventHandler.getKeys();
+        buttons = mouseEventHandler.getButtons();
+
+        this.checkotherwm();
+        this.setup();    
+        this.scan();
+        this.run();
+        this.close();
+
+        return 0;
+    }
+
+    void checkotherwm() 
+    {
+        xerrorxlib = XSetErrorHandler(&xerrorstart);
+        /* this causes an error if some other window manager is running */
+        XSelectInput(AppDisplay.instance().dpy, DefaultRootWindow(AppDisplay.instance().dpy), SubstructureRedirectMask);
+        XSync(AppDisplay.instance().dpy, false);
+        XSetErrorHandler(&xerror);
+        XSync(AppDisplay.instance().dpy, false);
     }
 
     void setup() 
@@ -225,16 +163,6 @@ class Kernel
         focus(null);
     }
 
-    void checkotherwm() 
-    {
-        xerrorxlib = XSetErrorHandler(&xerrorstart);
-        /* this causes an error if some other window manager is running */
-        XSelectInput(AppDisplay.instance().dpy, DefaultRootWindow(AppDisplay.instance().dpy), SubstructureRedirectMask);
-        XSync(AppDisplay.instance().dpy, false);
-        XSetErrorHandler(&xerror);
-        XSync(AppDisplay.instance().dpy, false);
-    }
-
     void scan() 
     {
         uint i, num;
@@ -247,14 +175,14 @@ class Kernel
                 if(!XGetWindowAttributes(AppDisplay.instance().dpy, wins[i], &wa)
                         || wa.override_redirect || XGetTransientForHint(AppDisplay.instance().dpy, wins[i], &d1))
                     continue;
-                if(wa.map_state == IsViewable || getstate(wins[i]) == IconicState)
+                if(wa.map_state == IsViewable || this.getstate(wins[i]) == IconicState)
                     windowManager.manage(wins[i], &wa);
             }
             for(i = 0; i < num; i++) { /* now the transients */
                 if(!XGetWindowAttributes(AppDisplay.instance().dpy, wins[i], &wa))
                     continue;
                 if(XGetTransientForHint(AppDisplay.instance().dpy, wins[i], &d1)
-                        && (wa.map_state == IsViewable || getstate(wins[i]) == IconicState))
+                        && (wa.map_state == IsViewable || this.getstate(wins[i]) == IconicState))
                     windowManager.manage(wins[i], &wa);
             }
             if(wins)
@@ -271,20 +199,6 @@ class Kernel
         while(AppDisplay.instance().running && !XNextEvent(AppDisplay.instance().dpy, &ev)) {
             eventManager.listen(&ev);
         }
-    }
-
-    int boot()
-    {
-        keys = keyboardEventHandler.getKeys();
-        buttons = mouseEventHandler.getButtons();
-
-        this.checkotherwm();
-        this.setup();    
-        this.scan();
-        this.run();
-        this.close();
-
-        return 0;
     }
 
     void cleanup() 
@@ -327,4 +241,29 @@ class Kernel
         this.cleanup();
         XCloseDisplay(AppDisplay.instance().dpy);
     }
+
+    /**
+    * Get window State
+    **/    
+    long getstate(Window w) 
+    {
+        int format;
+        long result = -1;
+        ubyte *p = null;
+        ulong n, extra;
+        Atom realVal;
+
+        if(XGetWindowProperty(AppDisplay.instance().dpy, w, wmatom[WMState], 0L, 2L, false, wmatom[WMState],
+           &realVal, &format, &n, &extra, cast(ubyte **)&p) != XErrorCode.Success) {
+            return -1;
+        }
+
+        if(n != 0) {
+            result = *p;
+        }
+
+        XFree(p);
+        return result;
+    }
+
 }

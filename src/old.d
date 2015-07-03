@@ -73,7 +73,6 @@ void updateclientlist()
 }
 
 
-
 bool getrootptr(int *x, int *y) 
 {
     int di;
@@ -342,21 +341,6 @@ void toggleview(const Arg *arg) {
     }
 }
 
-
-void spawn(const Arg *arg) {
-    import std.variant;
-    Variant v = arg.val;
-    const(string[]) args = arg.s;
-    if(args[0] == dmenucmd[0]) {
-        dmenumon[0] =cast(char)('0' + selmon.num);
-    }
-    try {
-        auto pid = spawnProcess(args);
-    } catch {
-        die("Failed to spawn '%s'", args);
-    }
-}
-
 void zoom(const Arg *arg) {
     
     Client *c = selmon.sel;
@@ -376,19 +360,6 @@ void zoom(const Arg *arg) {
     pop(c);
 }
 
-void setlayout(const Arg *arg) 
-{
-    if(!arg || !arg.v || arg.v != selmon.lt[selmon.sellt])
-        selmon.sellt ^= 1;
-    if(arg && arg.v) {
-        selmon.lt[selmon.sellt] = cast(Layout *)arg.v;
-    }
-    selmon.ltsymbol = selmon.lt[selmon.sellt].symbol;
-    if(selmon.sel)
-        arrange(selmon);
-    else
-        drawbar(selmon);
-}
 
 void view(const Arg *arg) {
     
@@ -438,48 +409,9 @@ void setmfact(const Arg *arg) {
     arrange(selmon);
 }
 
-void tile(Monitor *m) 
+
+bool updategeom() 
 {
-    uint i, n, h, mw, my, ty;
-    Client *c;
-
-    for(n = 0, c = nexttiled(m.clients); c; c = nexttiled(c.next), n++) {}
-    if(n == 0) {
-        return;
-    }
-
-    if(n > m.nmaster) {
-        mw = cast(uint)(m.nmaster ? m.ww * m.mfact : 0);
-    } else {
-        mw = m.ww;
-    }
-    for(i = my = ty = 0, c = nexttiled(m.clients); c; c = nexttiled(c.next), i++) {
-        if(i < m.nmaster) {
-            h = (m.wh - my) / (min(n, m.nmaster) - i);
-            resize(c, m.wx, m.wy + my, mw - (2*c.bw), h - (2*c.bw), false);
-            my += HEIGHT(c);
-        } else {
-            h = (m.wh - ty) / (n - i);
-            resize(c, m.wx + mw, m.wy + ty, m.ww - mw - (2*c.bw), h - (2*c.bw), false);
-            ty += HEIGHT(c);
-        }
-    }
-}
-
-void monocle(Monitor *m) 
-{
-    uint n = 0;
-
-    n = m.clients.range!"next".map!(a=>ISVISIBLE(a)).sum;
-    if(n > 0) { /* override layout symbol */
-        m.ltsymbol = format("[%d]", n);
-    }
-    for(auto c = nexttiled(m.clients); c; c = nexttiled(c.next)) {
-        resize(c, m.wx, m.wy, m.ww - 2 * c.bw, m.wh - 2 * c.bw, false);
-    }
-}
-
-bool updategeom() {
     
     bool dirty = false;
 
@@ -488,6 +420,7 @@ bool updategeom() {
     version(XINERAMA) {
         isXineramaActive = XineramaIsActive(AppDisplay.instance().dpy);
     }
+ 
     if(isXineramaActive) {
         version(XINERAMA) {
             import std.range;
@@ -495,11 +428,12 @@ bool updategeom() {
             Client *c;
             XineramaScreenInfo *info = XineramaQueryScreens(AppDisplay.instance().dpy, &nn);
             auto n = mons.range.walkLength;
+
             XineramaScreenInfo[] unique = new XineramaScreenInfo[nn];
             if(!unique.length) {
                 die("fatal: could not malloc() %u bytes\n", XineramaScreenInfo.sizeof * nn);
             }
-
+           
             /* only consider unique geometries as separate screens */
             int j=0;
             foreach(i; 0..nn) {
@@ -507,8 +441,10 @@ bool updategeom() {
                     unique[j++] = info[i];
                 }
             }
+
             XFree(info);
             nn = j;
+
             if(n <= nn) {
                 foreach(i; 0..(nn-n)) { /* new monitors available */
                     auto m = mons.range.find!"a.next is null".front;
@@ -557,6 +493,7 @@ bool updategeom() {
         if(!mons) {
             mons = createmon();
         }
+        
         if(mons.mw != sw || mons.mh != sh) {
             dirty = true;
             mons.mw = mons.ww = sw;
@@ -822,8 +759,6 @@ void clearurgent(Client *c) {
     XSetWMHints(AppDisplay.instance().dpy, c.win, wmh);
     XFree(wmh);
 }
-
-
 
 void detachstack(Client *c) 
 {

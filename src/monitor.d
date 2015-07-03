@@ -25,6 +25,7 @@ struct Monitor
   int by;               /* bar geometry */
   int mx, my, mw, mh;   /* screen size */
   int wx, wy, ww, wh;   /* window area  */
+
   uint seltags;
   uint sellt;
   uint[2] tagset;
@@ -158,4 +159,39 @@ Monitor* createmon()
     m.ltsymbol = layouts[0].symbol;
 
     return m;
+}
+
+void arrange(Monitor *m) 
+{
+    if(m) {
+        windowManager.showhide(m.stack);
+    } else foreach(m; mons.range) {
+        windowManager.showhide(m.stack);
+    }
+    if(m) {
+        arrangemon(m);
+        restack(m);
+    } else foreach(m; mons.range) {
+        arrangemon(m);
+    }
+}
+
+void arrangemon(Monitor *m) {
+    
+    m.ltsymbol = m.lt[m.sellt].symbol;
+
+    if(m.lt[m.sellt].arrange)
+        m.lt[m.sellt].arrange(m);
+}
+
+void attach(Client *c) {
+    
+    c.next = c.mon.clients;
+    c.mon.clients = c;
+}
+
+void attachstack(Client *c) {
+    
+    c.snext = c.mon.stack;
+    c.mon.stack = c;
 }

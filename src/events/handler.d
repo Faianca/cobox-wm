@@ -48,8 +48,17 @@ class EventHandler
 
 	void listen(XEvent* ev)
 	{
-		this.keyboard.listen(ev);
-		this.mouse.listen(ev);
+        switch (ev.type) {
+            case KeyPress:
+                this.keyboard.listen(ev);
+                break;
+
+            case ButtonPress:
+                this.mouse.listen(ev);
+                break;
+
+            default: { }
+        }
 
 		if(handler[ev.type]) {
             handler[ev.type](ev); /* call handler */
@@ -104,7 +113,7 @@ void propertynotify(XEvent *e)
             }
 
             if(ev.atom == XA_WM_NAME || ev.atom == netatom[NetWMName]) {
-                updatetitle(c);
+                windowManager.updatetitle(c);
                 if(c == c.mon.sel)
                     drawbar(c.mon);
             }
@@ -149,7 +158,6 @@ void destroynotify(XEvent *e)
         unmanage(c, true);
     }
 }
-
 
 void enternotify(XEvent *e) 
 {

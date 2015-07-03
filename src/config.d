@@ -4,13 +4,14 @@ import types;
 import old;
 import theme.layout;
 
+static immutable string VERSION = "0.1 Cobox";
 enum MODKEY = Mod1Mask;
 
 static immutable Layout[] layouts = [
     /* symbol            arrange function */
     { symbol:"><>",      arrange:null },  /* no layout function means floating behavior */
-    { symbol:"[]=",      arrange:&tile },    /* first entry is default */
-    { symbol:"[M]",      arrange:&monocle },
+    /* { symbol:"[]=",      arrange:&tile },    first entry is default 
+    { symbol:"[M]",      arrange:&monocle },*/
 ];
 
 static immutable Rule[] rules = [
@@ -19,7 +20,7 @@ static immutable Rule[] rules = [
 	 *  WM_NAME(STRING) = title
 	 */
 	/* klass      instance    title       tags mask     isfloating   monitor */
-	{ "xterm",     null,       null,       1 << 8,        false,  -1 },
+	{ "xterm",     null,       null,       1,        false,  -1 },
 	//{ "Firefox",  null,       null,       1 << 8,       false,       -1 },
 ];
 

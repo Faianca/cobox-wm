@@ -26,7 +26,7 @@ class AppDisplay
 
   Display *dpy;
   bool running = true;
-
+  
   static AppDisplay instance() 
   {
     if (!instantiated_) {
@@ -39,6 +39,11 @@ class AppDisplay
       }
     }
     return instance_;
+  }
+
+  void quit() 
+  {
+     this.running = false;
   }
 
  private:
