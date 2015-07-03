@@ -31,7 +31,7 @@ class CboxOptions
 	this()
 	{
 		keys = new CFInfo(false, this.cboxhome, "/keys");
-		startup = new CFInfo(false, this.cboxhome, "/startup2");
+		startup = new CFInfo(false, this.cboxhome, "/startup");
 	}
 
 	void update()
