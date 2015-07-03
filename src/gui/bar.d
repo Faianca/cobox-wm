@@ -48,19 +48,20 @@ void drawbar(Monitor *m)
     }
 
     int xx = x;
-
+    
     if(m == selmon) { /* status is only drawn on selected monitor */
         w = TEXTW(stext);
-        x = m.ww - w;
+        x = m.mw - w;
+
         if(x < xx) {
             x = xx;
-            w = m.ww - xx;
+            w = m.mw - xx;
         }
 
         drw.setscheme(&norm);
         drw.text(x, 0, w, bh, stext, 0);
     } else {
-        x = m.ww;
+        x = m.mw;
     }
 
     if((w = x - xx) > bh) {
@@ -75,7 +76,7 @@ void drawbar(Monitor *m)
         }
     }
 
-    drw.map(m.barwin, 0, 0, m.ww, bh);
+    drw.map(m.barwin, 0, 0, m.mw, bh);
 }
 
 void drawbars()

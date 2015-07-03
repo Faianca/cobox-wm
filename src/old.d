@@ -420,6 +420,7 @@ bool updategeom()
     version(XINERAMA) {
         isXineramaActive = XineramaIsActive(AppDisplay.instance().dpy);
     }
+ 
     if(isXineramaActive) {
         version(XINERAMA) {
             import std.range;
@@ -427,11 +428,12 @@ bool updategeom()
             Client *c;
             XineramaScreenInfo *info = XineramaQueryScreens(AppDisplay.instance().dpy, &nn);
             auto n = mons.range.walkLength;
+
             XineramaScreenInfo[] unique = new XineramaScreenInfo[nn];
             if(!unique.length) {
                 die("fatal: could not malloc() %u bytes\n", XineramaScreenInfo.sizeof * nn);
             }
-
+           
             /* only consider unique geometries as separate screens */
             int j=0;
             foreach(i; 0..nn) {
@@ -439,8 +441,10 @@ bool updategeom()
                     unique[j++] = info[i];
                 }
             }
+
             XFree(info);
             nn = j;
+
             if(n <= nn) {
                 foreach(i; 0..(nn-n)) { /* new monitors available */
                     auto m = mons.range.find!"a.next is null".front;
@@ -489,6 +493,7 @@ bool updategeom()
         if(!mons) {
             mons = createmon();
         }
+        
         if(mons.mw != sw || mons.mh != sh) {
             dirty = true;
             mons.mw = mons.ww = sw;

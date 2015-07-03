@@ -25,6 +25,7 @@ struct Monitor
   int by;               /* bar geometry */
   int mx, my, mw, mh;   /* screen size */
   int wx, wy, ww, wh;   /* window area  */
+
   uint seltags;
   uint sellt;
   uint[2] tagset;

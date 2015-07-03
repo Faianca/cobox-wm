@@ -4,6 +4,7 @@ import std.string;
 import std.stdio;
 import config;
 import std.process;
+import std.file;
 
 struct CFInfo 
 {
@@ -30,12 +31,14 @@ class CboxOptions
 	this()
 	{
 		keys = new CFInfo(false, this.cboxhome, "/keys");
-		startup = new CFInfo(false, this.cboxhome, "/startup");
+		startup = new CFInfo(false, this.cboxhome, "/startup2");
 	}
 
 	void update()
 	{
-	   spawnProcess(this.startup.fullName);
+	   if (exists(this.startup.fullName)) {
+	   	 spawnProcess(this.startup.fullName);
+	   }
 	}
 
 	/**
