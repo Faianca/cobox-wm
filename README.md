@@ -6,4 +6,4 @@ This is just the main release, soon will be a bigger release and hopefully 100% 
 
 Thanks to DWM, DDWM project which alot of code has been forked and of course to fluxbox.
 
-![ScreenShot](http://s16.postimg.org/h53afqsg3/cobox.png)
+![ScreenShot](/screenshots/cobox.png)
