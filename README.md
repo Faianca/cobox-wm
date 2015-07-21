@@ -28,4 +28,4 @@ DISPLAY=:1 ./cobox-wm
 ## Screen Shots
 ![ScreenShot](https://raw.githubusercontent.com/Faianca/cobox-wm/master/screenshots/cobox.png)
 
-![ScreenShot](https://raw.githubusercontent.com/Faianca/cobox-wm/master/screenshots/cobox.png)
+![ScreenShot](https://raw.githubusercontent.com/Faianca/cobox-wm/master/screenshots/cobox2.png)
