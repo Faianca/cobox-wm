@@ -1,4 +1,4 @@
-# cbox-wm - Dlang Window Manager
+# cobox-wm - Dlang Window Manager
 CteamBox Window Manager in D programming Language.
 Thanks to DWM, DDWM project which alot of code has been forked and of course to fluxbox.
 It's still in a heavy development and alot of changes and features will come in a near future. If you feel like joining let me know.
