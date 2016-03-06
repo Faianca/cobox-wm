@@ -10,11 +10,11 @@ import window;
 import monitor;
 
 import std.c.stdlib;
-import deimos.X11.X;
-import deimos.X11.Xlib;
-import deimos.X11.keysymdef;
-import deimos.X11.Xutil;
-import deimos.X11.Xatom;
+import x11.X;
+import x11.Xlib;
+import x11.keysymdef;
+import x11.Xutil;
+import x11.Xatom;
 import std.stdio;
 import std.string;
 import std.algorithm;

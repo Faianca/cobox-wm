@@ -6,7 +6,7 @@ import config;
 import std.process;
 import std.file;
 
-struct CFInfo 
+struct CFInfo
 {
 	bool create_file;
 	immutable string default_name;
@@ -61,7 +61,7 @@ class CboxOptions
 				}
 			}
 		}
-		
+
 		return 1;
 	}
 
@@ -91,7 +91,7 @@ private:
                "-list-commands\t\t\tlist all valid key commands.\n" ~
                "-sync\t\t\t\tsynchronize with X server for debugging.\n" ~
                "-log <filename>\t\t\tlog output to file.\n" ~
-               "-help\t\t\t\tdisplay this help text and exit.\n\n" 
+               "-help\t\t\t\tdisplay this help text and exit.\n\n"
 		);
 		return -1;
 	}

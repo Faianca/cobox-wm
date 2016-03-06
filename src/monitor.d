@@ -4,7 +4,7 @@ import std.stdio;
 import std.string;
 import std.algorithm;
 
-import deimos.X11.X;
+import x11.X;
 
 import cboxapp;
 import window;

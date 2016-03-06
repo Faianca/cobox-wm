@@ -1,6 +1,6 @@
 module xinerama;
 
-import deimos.X11.Xlib;
+import x11.Xlib;
 
 struct XineramaScreenInfo 
 {

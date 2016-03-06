@@ -1,18 +1,18 @@
 module cboxapp;
 
 import std.stdio;
-import deimos.X11.X;
-import deimos.X11.Xlib;
-import deimos.X11.keysymdef;
-import deimos.X11.Xutil;
-import deimos.X11.Xatom;
+import x11.X;
+import x11.Xlib;
+import x11.keysymdef;
+import x11.Xutil;
+import x11.Xatom;
 import window;
 import types;
 import theme.layout;
 import monitor;
 
 alias DGC = core.memory.GC;
-alias XGC = deimos.X11.Xlib.GC;
+alias XGC = x11.Xlib.GC;
 
 import core.sys.posix.signal;
 import core.sys.posix.sys.wait;
@@ -21,13 +21,13 @@ import core.sys.posix.unistd;
 /**
 * Singleton to hold our main Display
 **/
-class AppDisplay 
-{   
+class AppDisplay
+{
 
   Display *dpy;
   bool running = true;
-  
-  static AppDisplay instance() 
+
+  static AppDisplay instance()
   {
     if (!instantiated_) {
       synchronized {
@@ -41,7 +41,7 @@ class AppDisplay
     return instance_;
   }
 
-  void quit() 
+  void quit()
   {
      this.running = false;
   }
@@ -53,7 +53,7 @@ class AppDisplay
 
  }
 
-struct Client 
+struct Client
 {
   string name;
   float mina, maxa;
@@ -77,20 +77,20 @@ struct Client
      * auto sr = ClientRange!"snext"(clientPtr);
      * ---
      */
-    struct ClientRange(string NextField) 
+    struct ClientRange(string NextField)
     {
         Client* client;
-        @property bool empty() 
+        @property bool empty()
         {
           return client is null;
         }
 
-        @property auto front() 
+        @property auto front()
         {
           return client;
         }
 
-        auto popFront() 
+        auto popFront()
         {
             mixin(`client = client.`~NextField~`;`);
         }

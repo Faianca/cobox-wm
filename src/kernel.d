@@ -17,11 +17,11 @@ import core.sys.posix.sys.wait;
 import core.sys.posix.unistd;
 import core.memory;
 
-import deimos.X11.X;
-import deimos.X11.Xlib;
-import deimos.X11.keysymdef;
-import deimos.X11.Xutil;
-import deimos.X11.Xatom;
+import x11.X;
+import x11.Xlib;
+import x11.keysymdef;
+import x11.Xutil;
+import x11.Xatom;
 
 import cboxapp;
 import types;
@@ -59,7 +59,7 @@ WindowManager windowManager;
 static Atom[WMLast] wmatom;
 static Atom[NetLast] netatom;
 
-void quit(const Arg *arg) 
+void quit(const Arg *arg)
 {
     AppDisplay.instance().running = false;
 }
@@ -69,7 +69,7 @@ class Kernel
     this()
     {
         keyboardEventHandler = new KeyboardEvents();
-        keyboardEventHandler.addEvent(MODKEY|ShiftMask, XK_q, &quit);    
+        keyboardEventHandler.addEvent(MODKEY|ShiftMask, XK_q, &quit);
         keyboardEventHandler.addEvent(MODKEY, XK_p, &spawn, dmenucmd);
 
         mouseEventHandler = new MouseEvents();
@@ -86,7 +86,7 @@ class Kernel
         buttons = mouseEventHandler.getButtons();
 
         this.checkotherwm();
-        this.setup();    
+        this.setup();
         this.scan();
         this.run();
         this.close();
@@ -94,7 +94,7 @@ class Kernel
         return 0;
     }
 
-    void checkotherwm() 
+    void checkotherwm()
     {
         xerrorxlib = XSetErrorHandler(&xerrorstart);
         /* this causes an error if some other window manager is running */
@@ -104,7 +104,7 @@ class Kernel
         XSync(AppDisplay.instance().dpy, false);
     }
 
-    void setup() 
+    void setup()
     {
         XSetWindowAttributes wa;
 
@@ -136,18 +136,18 @@ class Kernel
 
         /* EWMH support per view */
         XChangeProperty(
-            AppDisplay.instance().dpy, 
-            rootWin, 
-            windowManager.getAtom("NetLast",NetSupported), 
+            AppDisplay.instance().dpy,
+            rootWin,
+            windowManager.getAtom("NetLast",NetSupported),
             XA_ATOM, 32,
-            PropModeReplace, 
-            cast(ubyte*) windowManager.getAllAtoms("NetLast"), 
+            PropModeReplace,
+            cast(ubyte*) windowManager.getAllAtoms("NetLast"),
             NetLast
         );
 
         XDeleteProperty(
-            AppDisplay.instance().dpy, 
-            rootWin, 
+            AppDisplay.instance().dpy,
+            rootWin,
             windowManager.getAtom("NetLast", NetClientList)
         );
 
@@ -163,7 +163,7 @@ class Kernel
         focus(null);
     }
 
-    void scan() 
+    void scan()
     {
         uint i, num;
         Window d1, d2;
@@ -190,7 +190,7 @@ class Kernel
         }
     }
 
-    void run() 
+    void run()
     {
         extern(C) __gshared XEvent ev;
 
@@ -201,7 +201,7 @@ class Kernel
         }
     }
 
-    void cleanup() 
+    void cleanup()
     {
         auto a = Arg(-1);
         Layout foo = { "", null };
@@ -244,8 +244,8 @@ class Kernel
 
     /**
     * Get window State
-    **/    
-    long getstate(Window w) 
+    **/
+    long getstate(Window w)
     {
         int format;
         long result = -1;

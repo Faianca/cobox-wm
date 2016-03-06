@@ -6,11 +6,11 @@ import core.sys.posix.unistd;
 import core.memory;
 import std.stdio;
 
-import deimos.X11.X;
-import deimos.X11.Xlib;
-import deimos.X11.keysymdef;
-import deimos.X11.Xutil;
-import deimos.X11.Xatom;
+import x11.X;
+import x11.Xlib;
+import x11.keysymdef;
+import x11.Xutil;
+import x11.Xatom;
 
 import utils;
 
@@ -37,7 +37,7 @@ extern(C) int xerrorstart(Display *dpy, XErrorEvent *ee) nothrow
 }
 
 extern(C) int xerror(Display *dpy, XErrorEvent *ee) nothrow {
-	import deimos.X11.Xproto :
+	import x11.Xproto :
 		    X_SetInputFocus, X_PolyText8, X_PolyFillRectangle, X_PolySegment,
 		    X_ConfigureWindow, X_GrabButton, X_GrabKey, X_CopyArea;
 

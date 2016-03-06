@@ -1,6 +1,6 @@
 module events.interfaces;
 
-import deimos.X11.Xlib;
+import x11.Xlib;
 
 interface EventInterface
 {

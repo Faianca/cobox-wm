@@ -5,6 +5,6 @@
 	"authors": ["faianca"],
 	"license": "MIT-License",
 	"dependencies":{
-		"libx11":">=0.0.1",
+		"x11": "~>1.0.13"
 	}
 }

@@ -2,11 +2,11 @@ module gui.cursor;
 
 import utils;
 import cboxapp;
-import deimos.X11.X;
-import deimos.X11.Xlib;
-import deimos.X11.keysymdef;
-import deimos.X11.Xutil;
-import deimos.X11.Xatom;
+import x11.X;
+import x11.Xlib;
+import x11.keysymdef;
+import x11.Xutil;
+import x11.Xatom;
 import std.c.stdlib;
 static Cur*[CurLast] cursor;
 

@@ -5,8 +5,8 @@ import cli.options;
 import config;
 
 import std.stdio;
-import deimos.X11.X;
-import deimos.X11.Xlib;
+import x11.X;
+import x11.Xlib;
 import std.datetime;
 
 int main(string[] args)
@@ -24,7 +24,7 @@ int main(string[] args)
         stderr.writeln("cbox: cannot open display");
         return -1;
     }
-    
+
 	writeln("Codename: Nikola 0.2");
 
 	Kernel kernel = new Kernel();

@@ -1,8 +1,8 @@
 module gui.font;
 
-import deimos.X11.X;
-import deimos.X11.Xlib;
-import deimos.X11.Xutil;
+import x11.X;
+import x11.Xlib;
+import x11.Xutil;
 import std.c.stdlib;
 import std.string;
 import std.algorithm;

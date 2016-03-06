@@ -1,5 +1,5 @@
 module config;
-import deimos.X11.X;
+import x11.X;
 import types;
 import old;
 import theme.layout;
